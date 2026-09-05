@@ -1,4 +1,4 @@
-JobJazz 
+JobJazz
 Your career, in tune.
 
 JobJazz is an AI-powered career intelligence platform that helps candidates understand how well their profile aligns with job opportunities.
