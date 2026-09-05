@@ -1,6 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
 
 from app.services.pdf_extractor import extract_text_from_pdf
+from app.services.resume_parser import parse_resume_text
 
 
 router = APIRouter(
@@ -45,7 +46,7 @@ async def extract_resume(file: UploadFile = File(...)):
             detail="The uploaded file is not a valid PDF.",
         )
 
-    # 6. Extract text
+    # 6. Extract text from PDF
     try:
         extracted_text = extract_text_from_pdf(file_bytes)
 
@@ -62,8 +63,19 @@ async def extract_resume(file: UploadFile = File(...)):
             detail="No readable text was found in the PDF.",
         )
 
-    # 8. Return extracted content
+    # 8. Parse extracted text into structured resume profile
+    try:
+        resume_profile = parse_resume_text(extracted_text)
+
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to analyze the extracted resume content.",
+        )
+
+    # 9. Return extracted text + structured profile
     return {
         "filename": file.filename,
         "text": extracted_text,
+        "profile": resume_profile.model_dump(),
     }
