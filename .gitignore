@@ -64,3 +64,6 @@ build/
 # =========================
 .DS_Store
 Thumbs.db
+# Environment variables / secrets
+.env
+*.env

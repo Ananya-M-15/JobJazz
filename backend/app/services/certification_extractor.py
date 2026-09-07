@@ -20,13 +20,32 @@ SECTION_END_KEYWORDS = [
 ]
 
 
-KNOWN_ISSUERS = [
-    "NPTEL",
-    "Python",
-    "Microsoft Azure",
-    "Red Hat",
-    "Cisco",
-]
+KNOWN_ISSUERS = {
+    "nptel": "NPTEL",
+    "python": "Python",
+    "microsoft azure": "Microsoft Azure",
+    "red hat": "Red Hat",
+    "cisco": "Cisco",
+}
+
+
+def normalize_line(line: str) -> str:
+    """Remove common OCR artifacts from certification lines."""
+
+    line = line.strip()
+
+    # Remove common OCR bullets.
+    line = re.sub(
+        r"^(?:o|eo)\s+",
+        "",
+        line,
+        flags=re.IGNORECASE,
+    )
+
+    # Normalize spaces before colons.
+    line = re.sub(r"\s+:", ":", line)
+
+    return line.strip()
 
 
 def find_certification_section(text: str) -> str:
@@ -35,7 +54,13 @@ def find_certification_section(text: str) -> str:
     start_index = None
 
     for index, line in enumerate(lines):
-        if line.strip().lower() in CERTIFICATION_SECTION_KEYWORDS:
+        normalized = re.sub(
+            r"[^a-zA-Z &]",
+            "",
+            line,
+        ).strip().lower()
+
+        if normalized in CERTIFICATION_SECTION_KEYWORDS:
             start_index = index + 1
             break
 
@@ -45,17 +70,32 @@ def find_certification_section(text: str) -> str:
     section_lines = []
 
     for line in lines[start_index:]:
-        stripped = line.strip()
+        stripped = normalize_line(line)
 
         if not stripped:
             continue
 
-        if stripped.lower() in SECTION_END_KEYWORDS:
+        normalized = re.sub(
+            r"[^a-zA-Z &]",
+            "",
+            stripped,
+        ).strip().lower()
+
+        if normalized in SECTION_END_KEYWORDS:
             break
 
         section_lines.append(stripped)
 
     return "\n".join(section_lines)
+
+
+def get_known_issuer(value: str) -> str:
+    """Return canonical issuer name if recognized."""
+
+    return KNOWN_ISSUERS.get(
+        value.strip().lower(),
+        "",
+    )
 
 
 def extract_certifications(text: str) -> list[Certification]:
@@ -65,9 +105,9 @@ def extract_certifications(text: str) -> list[Certification]:
         return []
 
     lines = [
-        line.strip()
+        normalize_line(line)
         for line in section.splitlines()
-        if line.strip()
+        if normalize_line(line)
     ]
 
     certifications = []
@@ -76,27 +116,38 @@ def extract_certifications(text: str) -> list[Certification]:
 
     for line in lines:
 
+        # ---------------------------------------------
         # Case 1:
-        # "Cisco:"
-        # "Computer Networks"
         #
-        # Remember the issuer and use the next line
-        # as the certification name.
+        # Cisco:
+        # Computer Networks
+        # ---------------------------------------------
+
         if line.endswith(":"):
-            current_issuer = line.rstrip(":").strip()
+            issuer_text = line.rstrip(":").strip()
+
+            issuer = get_known_issuer(issuer_text)
+
+            if issuer:
+                current_issuer = issuer
+
             continue
 
+        # ---------------------------------------------
         # Case 2:
-        # "NPTEL: Data Structures & Algorithms, Design & Analysis..."
         #
-        # Split the issuer from the certification names.
+        # NPTEL: Data Structures & Algorithms, ...
+        # ---------------------------------------------
+
         if ":" in line:
-            issuer, certification_text = line.split(":", 1)
+            issuer_text, certification_text = line.split(
+                ":",
+                1,
+            )
 
-            issuer = issuer.strip()
-            certification_text = certification_text.strip()
+            issuer = get_known_issuer(issuer_text)
 
-            if issuer in KNOWN_ISSUERS:
+            if issuer:
                 current_issuer = issuer
 
                 certification_names = [
@@ -114,11 +165,19 @@ def extract_certifications(text: str) -> list[Certification]:
                         )
                     )
 
+                current_issuer = ""
+
                 continue
 
+        # ---------------------------------------------
         # Case 3:
-        # A line following something like:
-        # "Cisco:"
+        #
+        # Line following:
+        #
+        # Cisco:
+        # Computer Networks
+        # ---------------------------------------------
+
         if current_issuer:
             certifications.append(
                 Certification(
@@ -132,7 +191,12 @@ def extract_certifications(text: str) -> list[Certification]:
 
             continue
 
-        # Fallback
+        # ---------------------------------------------
+        # Case 4:
+        #
+        # Fallback certification without issuer.
+        # ---------------------------------------------
+
         certifications.append(
             Certification(
                 name=line,

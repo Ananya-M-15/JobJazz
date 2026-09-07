@@ -3,26 +3,33 @@ import re
 from app.models.resume_profile import Experience
 
 
-EXPERIENCE_SECTION_KEYWORDS = [
+EXPERIENCE_KEYWORDS = [
     "experience",
     "work experience",
     "professional experience",
-    "internship experience",
+    "employment",
 ]
 
-
-SECTION_END_KEYWORDS = [
+EXPERIENCE_SECTION_END_KEYWORDS = [
+    "projects",
+    "certifications",
     "education",
     "technical skills",
     "skills",
-    "projects",
-    "certifications",
+    "achievements",
+    "publications",
 ]
 
-
-DATE_PATTERN = re.compile(
-    r"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
-    r"[a-z]*\.?\s+\d{4}\b",
+DATE_RANGE_PATTERN = re.compile(
+    r"("
+    r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
+    r"[a-z]*\.?\s+\d{4}"
+    r"\s*[-–—]\s*"
+    r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
+    r"[a-z]*\.?\s+\d{4}"
+    r"|"
+    r"\d{4}\s*[-–—]\s*\d{4}"
+    r")",
     re.IGNORECASE,
 )
 
@@ -33,7 +40,13 @@ def find_experience_section(text: str) -> str:
     start_index = None
 
     for index, line in enumerate(lines):
-        if line.strip().lower() in EXPERIENCE_SECTION_KEYWORDS:
+        normalized = re.sub(
+            r"[^a-zA-Z ]",
+            "",
+            line,
+        ).strip().lower()
+
+        if normalized in EXPERIENCE_KEYWORDS:
             start_index = index + 1
             break
 
@@ -48,12 +61,100 @@ def find_experience_section(text: str) -> str:
         if not stripped:
             continue
 
-        if stripped.lower() in SECTION_END_KEYWORDS:
+        normalized = re.sub(
+            r"[^a-zA-Z ]",
+            "",
+            stripped,
+        ).strip().lower()
+
+        if normalized in EXPERIENCE_SECTION_END_KEYWORDS:
             break
 
         section_lines.append(stripped)
 
     return "\n".join(section_lines)
+
+
+def extract_dates(text: str) -> tuple[str, str]:
+    match = DATE_RANGE_PATTERN.search(text)
+
+    if not match:
+        return "", ""
+
+    date_range = match.group(1)
+
+    parts = re.split(
+        r"\s*[-–—]\s*",
+        date_range,
+    )
+
+    if len(parts) == 2:
+        return parts[0].strip(), parts[1].strip()
+
+    return "", ""
+
+
+def is_date_line(line: str) -> bool:
+    return bool(DATE_RANGE_PATTERN.search(line))
+
+
+def clean_description(lines: list[str]) -> str:
+    cleaned = []
+
+    for line in lines:
+        line = line.strip()
+
+        if not line:
+            continue
+
+        # Remove common OCR bullet artifacts.
+        line = re.sub(
+            r"^(?:o|eo|•|●|▪|◦)\s+",
+            "",
+            line,
+            flags=re.IGNORECASE,
+        )
+
+        cleaned.append(line)
+
+    return " ".join(cleaned)
+
+
+def looks_like_role(line: str) -> bool:
+    role_keywords = [
+        "intern",
+        "engineer",
+        "developer",
+        "coordinator",
+        "manager",
+        "analyst",
+        "designer",
+        "consultant",
+        "associate",
+        "lead",
+        "specialist",
+        "trainee",
+        "executive",
+        "administrator",
+        "assistant",
+    ]
+
+    lowered = line.lower()
+
+    return any(keyword in lowered for keyword in role_keywords)
+
+
+def looks_like_company(line: str) -> bool:
+    if not line:
+        return False
+
+    if looks_like_role(line):
+        return False
+
+    if len(line.split()) > 8:
+        return False
+
+    return True
 
 
 def extract_experience(text: str) -> list[Experience]:
@@ -68,54 +169,59 @@ def extract_experience(text: str) -> list[Experience]:
         if line.strip()
     ]
 
-    entries = []
+    experiences = []
 
-    i = 0
+    index = 0
 
-    while i < len(lines):
+    while index < len(lines):
 
-        # We expect:
-        # Role
-        # Company
-        # Date
+        # --------------------------------------------------
+        # Expected structure:
         #
-        # Description...
+        # DATE
+        # ROLE
+        # COMPANY
+        # DESCRIPTION
+        # --------------------------------------------------
 
-        if i + 2 >= len(lines):
-            break
-
-        role = lines[i]
-        company = lines[i + 1]
-
-        date_matches = DATE_PATTERN.findall(lines[i + 2])
-
-        if len(date_matches) < 1:
-            i += 1
+        if not is_date_line(lines[index]):
+            index += 1
             continue
 
-        start_date = date_matches[0]
-        end_date = date_matches[1] if len(date_matches) >= 2 else ""
+        start_date, end_date = extract_dates(lines[index])
 
-        i += 3
+        index += 1
+
+        if index >= len(lines):
+            break
+
+        # The next line is normally the role.
+        role = lines[index]
+
+        index += 1
+
+        if index >= len(lines):
+            break
+
+        # The following line is normally the company.
+        company = lines[index]
+
+        index += 1
 
         description_lines = []
 
-        # Collect everything until the next possible
-        # Role + Company + Date combination.
-        while i < len(lines):
+        # Everything until the next date is description.
+        while index < len(lines):
 
-            if (
-                i + 2 < len(lines)
-                and len(DATE_PATTERN.findall(lines[i + 2])) >= 1
-            ):
+            if is_date_line(lines[index]):
                 break
 
-            description_lines.append(lines[i])
-            i += 1
+            description_lines.append(lines[index])
+            index += 1
 
-        description = " ".join(description_lines)
+        description = clean_description(description_lines)
 
-        entries.append(
+        experiences.append(
             Experience(
                 company=company,
                 role=role,
@@ -125,4 +231,4 @@ def extract_experience(text: str) -> list[Experience]:
             )
         )
 
-    return entries
+    return experiences
