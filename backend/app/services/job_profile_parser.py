@@ -13,7 +13,7 @@ from app.services.job_skill_extractor import (
 EXPERIENCE_PATTERN = re.compile(
     r"\b(?:"
     r"\d+\+?\s*(?:years?|yrs?)"
-    r"(?:\s*[-–]\s*\d+\s*(?:years?|yrs?))?"
+    r"(?:\s*[-–—]\s*\d+\+?\s*(?:years?|yrs?))?"
     r"|"
     r"entry[- ]level"
     r"|"
@@ -44,12 +44,22 @@ EDUCATION_KEYWORDS = [
 
 
 def extract_experience_requirement(text: str) -> str:
+    if not text:
+        return ""
+
     matches = EXPERIENCE_PATTERN.findall(text)
 
     if not matches:
         return ""
 
-    return matches[0]
+    # Return all meaningful experience requirements.
+    return "; ".join(
+        dict.fromkeys(
+            match.strip()
+            for match in matches
+            if match.strip()
+        )
+    )
 
 
 def extract_education_requirements(text: str) -> list[str]:
@@ -91,13 +101,11 @@ def parse_job_description(text: str) -> JobProfile:
         sections["experience"]
     )
 
-    education_requirements = (
-        extract_education_requirements(
-            sections["education"]
-        )
+    education_requirements = extract_education_requirements(
+        sections["education"]
     )
 
-    # Extract skills from the complete JD for keywords.
+    # Recognized skills across the complete JD.
     all_skills = extract_job_skills(
         text,
         "",

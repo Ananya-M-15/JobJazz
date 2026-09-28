@@ -45,21 +45,53 @@ SECTION_ALIASES = {
 
 
 def normalize_line(line: str) -> str:
+    if not line:
+        return ""
+
     line = line.strip()
 
-    # Remove common bullet characters.
+    # Normalize common Unicode bullet characters.
     line = re.sub(r"^[•●▪◦\-*]+\s*", "", line)
+
+    # Remove common mojibake bullet artifacts.
+    line = re.sub(r"^(?:â€¢|â—¦|â–ª|â—¦)+\s*", "", line)
 
     return line.strip()
 
 
+def normalize_heading(line: str) -> str:
+    line = normalize_line(line)
+
+    # Remove trailing punctuation commonly found in JD headings.
+    line = re.sub(r"[:\-–—]+$", "", line)
+
+    # Collapse whitespace.
+    line = re.sub(r"\s+", " ", line)
+
+    return line.strip().lower()
+
+
+def is_known_section_heading(line: str) -> bool:
+    normalized = normalize_heading(line)
+
+    return any(
+        normalized in aliases
+        for aliases in SECTION_ALIASES.values()
+    )
+
+
 def find_section(lines: list[str], keywords: list[str]) -> str:
+    normalized_keywords = {
+        normalize_heading(keyword)
+        for keyword in keywords
+    }
+
     start_index = None
 
     for index, line in enumerate(lines):
-        normalized = normalize_line(line).lower()
+        normalized = normalize_heading(line)
 
-        if normalized in keywords:
+        if normalized in normalized_keywords:
             start_index = index + 1
             break
 
@@ -74,15 +106,7 @@ def find_section(lines: list[str], keywords: list[str]) -> str:
         if not normalized:
             continue
 
-        # Stop when another known section heading appears.
-        lower_line = normalized.lower()
-
-        is_another_section = any(
-            lower_line in section_keywords
-            for section_keywords in SECTION_ALIASES.values()
-        )
-
-        if is_another_section:
+        if is_known_section_heading(normalized):
             break
 
         section_lines.append(normalized)
@@ -91,6 +115,14 @@ def find_section(lines: list[str], keywords: list[str]) -> str:
 
 
 def extract_job_sections(text: str) -> dict[str, str]:
+    if not text:
+        return {
+            "required": "",
+            "preferred": "",
+            "experience": "",
+            "education": "",
+        }
+
     lines = [
         line.strip()
         for line in text.splitlines()
@@ -115,16 +147,38 @@ def extract_job_sections(text: str) -> dict[str, str]:
             SECTION_ALIASES["education"],
         ),
     }
+
+
 def extract_job_title(text: str) -> str:
     lines = [
-        line.strip()
+        normalize_line(line)
         for line in text.splitlines()
-        if line.strip()
+        if normalize_line(line)
     ]
 
     if not lines:
         return ""
 
-    # Usually the job title appears near the beginning
-    # of the job description.
-    return lines[0] 
+    # Ignore generic document labels.
+    ignored_titles = {
+        "job description",
+        "job posting",
+        "position",
+        "role",
+        "about the role",
+    }
+
+    for line in lines[:8]:
+        normalized = normalize_heading(line)
+
+        if normalized in ignored_titles:
+            continue
+
+        if is_known_section_heading(line):
+            continue
+
+        # Avoid selecting very long descriptive sentences.
+        if len(line.split()) <= 12:
+            return line
+
+    return lines[0]
