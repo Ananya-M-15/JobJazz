@@ -1,7 +1,27 @@
 import re
+from datetime import date
+
 from app.models.resume_profile import ResumeProfile
 from app.models.job_profile import JobProfile
 from app.models.match_result import MatchResult
+from app.utils.skill_vocabulary import SKILL_VOCABULARY
+
+
+def normalize_skill(skill: str) -> str:
+    """Normalize a skill using the project's canonical skill vocabulary."""
+    normalized = skill.strip().lower()
+
+    for canonical_skill, aliases in SKILL_VOCABULARY.items():
+        canonical_lower = canonical_skill.lower()
+
+        if normalized == canonical_lower:
+            return canonical_lower
+
+        for alias in aliases:
+            if normalized == alias.lower():
+                return canonical_lower
+
+    return normalized
 
 
 def calculate_skill_matches(
@@ -9,7 +29,10 @@ def calculate_skill_matches(
     required_skills: list[str],
     preferred_skills: list[str],
 ) -> tuple[list[str], list[str], list[str], list[str]]:
-    resume_skill_set = {skill.lower() for skill in resume_skills}
+    resume_skill_set = {
+        normalize_skill(skill)
+        for skill in resume_skills
+    }
 
     matched_required = []
     missing_required = []
@@ -17,13 +40,13 @@ def calculate_skill_matches(
     missing_preferred = []
 
     for skill in required_skills:
-        if skill.lower() in resume_skill_set:
+        if normalize_skill(skill) in resume_skill_set:
             matched_required.append(skill)
         else:
             missing_required.append(skill)
 
     for skill in preferred_skills:
-        if skill.lower() in resume_skill_set:
+        if normalize_skill(skill) in resume_skill_set:
             matched_preferred.append(skill)
         else:
             missing_preferred.append(skill)
@@ -40,13 +63,16 @@ def calculate_keyword_matches(
     resume_skills: list[str],
     job_keywords: list[str],
 ) -> tuple[list[str], list[str]]:
-    resume_skill_set = {skill.lower() for skill in resume_skills}
+    resume_skill_set = {
+        normalize_skill(skill)
+        for skill in resume_skills
+    }
 
     keyword_matches = []
     keyword_gaps = []
 
     for keyword in job_keywords:
-        if keyword.lower() in resume_skill_set:
+        if normalize_skill(keyword) in resume_skill_set:
             keyword_matches.append(keyword)
         else:
             keyword_gaps.append(keyword)
@@ -79,7 +105,10 @@ def calculate_score(
 
     return round(overall_score, 2)
 
-def extract_years_required(experience_requirement: str) -> float | None:
+
+def extract_years_required(
+    experience_requirement: str,
+) -> float | None:
     if not experience_requirement:
         return None
 
@@ -94,6 +123,119 @@ def extract_years_required(experience_requirement: str) -> float | None:
     return float(match.group(1))
 
 
+def parse_experience_date(date_text: str) -> tuple[int, int] | None:
+    """
+    Extract year and month from values such as:
+    'May 2026', 'July 2027', or '2026'.
+    """
+    if not date_text:
+        return None
+
+    month_names = {
+        "jan": 1,
+        "feb": 2,
+        "mar": 3,
+        "apr": 4,
+        "may": 5,
+        "jun": 6,
+        "jul": 7,
+        "aug": 8,
+        "sep": 9,
+        "oct": 10,
+        "nov": 11,
+        "dec": 12,
+    }
+
+    month_match = re.search(
+        r"\b("
+        r"jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|"
+        r"may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|"
+        r"oct(?:ober)?|nov(?:ember)?|dec(?:ember)?"
+        r")\s+(\d{4})",
+        date_text,
+        re.IGNORECASE,
+    )
+
+    if month_match:
+        month = month_names[
+            month_match.group(1)[:3].lower()
+        ]
+        year = int(month_match.group(2))
+        return year, month
+
+    year_match = re.search(r"\b(20\d{2})\b", date_text)
+
+    if year_match:
+        return int(year_match.group(1)), 1
+
+    return None
+
+
+def calculate_experience_years(
+    resume: ResumeProfile,
+) -> float:
+    """Calculate total non-overlapping experience approximately in years."""
+
+    intervals = []
+
+    for experience in resume.experience:
+        start = parse_experience_date(
+            experience.start_date
+        )
+
+        if not start:
+            continue
+
+        end = parse_experience_date(
+            experience.end_date
+        )
+
+        if not end:
+            today = date.today()
+            end = (today.year, today.month)
+
+        start_year, start_month = start
+        end_year, end_month = end
+
+        start_total_months = (
+            start_year * 12 + start_month
+        )
+        end_total_months = (
+            end_year * 12 + end_month
+        )
+
+        if end_total_months > start_total_months:
+            intervals.append(
+                (start_total_months, end_total_months)
+            )
+
+    if not intervals:
+        return 0.0
+
+    intervals.sort()
+
+    merged = []
+    current_start, current_end = intervals[0]
+
+    for start, end in intervals[1:]:
+        if start <= current_end:
+            current_end = max(current_end, end)
+        else:
+            merged.append(
+                (current_start, current_end)
+            )
+            current_start, current_end = start, end
+
+    merged.append((current_start, current_end))
+
+    total_months = sum(
+        end - start
+        for start, end in merged
+    )
+
+    return round(total_months / 12, 2)
+
+
 def calculate_experience_match(
     resume: ResumeProfile,
     job: JobProfile,
@@ -105,36 +247,9 @@ def calculate_experience_match(
     if required_years is None:
         return True
 
-    if not resume.experience:
-        return False
-
-    total_years = 0.0
-
-    for experience in resume.experience:
-        if not experience.start_date:
-            continue
-
-        start_match = re.search(
-            r"(20\d{2})",
-            experience.start_date,
-        )
-
-        end_match = re.search(
-            r"(20\d{2})",
-            experience.end_date or "",
-        )
-
-        if not start_match:
-            continue
-
-        start_year = int(start_match.group(1))
-
-        if end_match:
-            end_year = int(end_match.group(1))
-        else:
-            end_year = start_year
-
-        total_years += max(0, end_year - start_year)
+    total_years = calculate_experience_years(
+        resume
+    )
 
     return total_years >= required_years
 
@@ -149,11 +264,10 @@ def calculate_education_match(
     if not resume.education:
         return False
 
-    education_text = " ".join(
+    resume_text = " ".join(
         [
             f"{education.degree} "
-            f"{education.field_of_study} "
-            f"{education.institution}"
+            f"{education.field_of_study}"
             for education in resume.education
         ]
     ).lower()
@@ -161,35 +275,61 @@ def calculate_education_match(
     for requirement in job.education_requirements:
         requirement_lower = requirement.lower()
 
-        if (
+        degree_match = (
             "bachelor" in requirement_lower
-            or "b.tech" in requirement_lower
+            and (
+                "bachelor" in resume_text
+                or "b.tech" in resume_text
+                or "btech" in resume_text
+            )
+        ) or (
+            "b.tech" in requirement_lower
             or "btech" in requirement_lower
-        ):
-            if (
-                "b.tech" in education_text
-                or "btech" in education_text
-                or "bachelor" in education_text
-            ):
-                return True
+        ) and (
+            "b.tech" in resume_text
+            or "btech" in resume_text
+        )
 
-        if (
+        master_match = (
             "master" in requirement_lower
-            or "m.tech" in requirement_lower
-            or "mtech" in requirement_lower
-        ):
-            if (
-                "master" in education_text
-                or "m.tech" in education_text
-                or "mtech" in education_text
-            ):
-                return True
+            and (
+                "master" in resume_text
+                or "m.tech" in resume_text
+                or "mtech" in resume_text
+            )
+        )
 
-        if "degree" in requirement_lower:
-            if "b.tech" in education_text or "btech" in education_text:
-                return True
+        if not (degree_match or master_match):
+            continue
+
+        # If a specific field is requested, verify it
+        # against the candidate's education.
+        field_keywords = [
+            "computer science",
+            "computer engineering",
+            "information technology",
+            "software engineering",
+            "artificial intelligence",
+            "data science",
+        ]
+
+        requested_fields = [
+            field
+            for field in field_keywords
+            if field in requirement_lower
+        ]
+
+        if not requested_fields:
+            return True
+
+        if any(
+            field in resume_text
+            for field in requested_fields
+        ):
+            return True
 
     return False
+
 
 def calculate_match(
     resume: ResumeProfile,
@@ -207,9 +347,11 @@ def calculate_match(
         job.preferred_skills,
     )
 
-    keyword_matches, keyword_gaps = calculate_keyword_matches(
-        resume.skills,
-        job.keywords,
+    keyword_matches, keyword_gaps = (
+        calculate_keyword_matches(
+            resume.skills,
+            job.keywords,
+        )
     )
 
     overall_score = calculate_score(
@@ -218,6 +360,7 @@ def calculate_match(
         matched_preferred,
         job.preferred_skills,
     )
+
     experience_match = calculate_experience_match(
         resume,
         job,
