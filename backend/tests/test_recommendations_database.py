@@ -1,20 +1,23 @@
+import uuid
+
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.database.database import SessionLocal
+from app.database.models import (
+    User,
+    Resume,
+    JobDescription,
+    Analysis,
+    Recommendation,
+)
+
 
 client = TestClient(app)
 
-def test_recommendation_api_falls_back_when_ai_fails(
-    monkeypatch,
-):
+
+def test_recommendations_are_saved_to_database(monkeypatch):
     from app.api.routes import recommendations
-    from app.database.database import SessionLocal
-    from app.database.models import (
-        User,
-        Resume,
-        JobDescription,
-        Analysis,
-    )
 
     db = SessionLocal()
 
@@ -25,18 +28,18 @@ def test_recommendation_api_falls_back_when_ai_fails(
 
     try:
         user = User(
-            email="recommendation_route_test@example.com",
-            name="Recommendation Test User",
+            email=f"recommendation_db_{uuid.uuid4().hex}@jobjazz.local",
+            name="Recommendation Database Test User",
         )
         db.add(user)
         db.flush()
 
         resume = Resume(
             user_id=user.id,
-            filename="recommendation_test.pdf",
+            filename="recommendation_db_test.pdf",
             raw_text="Python SQL resume",
             profile_data={
-                "name": "Recommendation Test User",
+                "name": "Recommendation Database Test User",
                 "skills": ["Python", "SQL"],
             },
         )
@@ -44,12 +47,18 @@ def test_recommendation_api_falls_back_when_ai_fails(
 
         job_description = JobDescription(
             user_id=user.id,
-            job_title="Software Engineer",
+            job_title="Machine Learning Engineer",
             raw_text="Python SQL Pandas Docker",
             profile_data={
-                "job_title": "Software Engineer",
-                "required_skills": ["Python", "SQL", "Pandas"],
-                "preferred_skills": ["Docker"],
+                "job_title": "Machine Learning Engineer",
+                "required_skills": [
+                    "Python",
+                    "SQL",
+                    "Pandas",
+                ],
+                "preferred_skills": [
+                    "Docker",
+                ],
             },
         )
         db.add(job_description)
@@ -91,16 +100,13 @@ def test_recommendation_api_falls_back_when_ai_fails(
                 "missing_required_skills": [
                     "Pandas",
                 ],
-                "matched_preferred_skills": [
-                    "Git",
-                ],
+                "matched_preferred_skills": [],
                 "missing_preferred_skills": [
                     "Docker",
                 ],
                 "keyword_matches": [
                     "Python",
                     "SQL",
-                    "Git",
                 ],
                 "keyword_gaps": [
                     "Pandas",
@@ -113,7 +119,6 @@ def test_recommendation_api_falls_back_when_ai_fails(
                 "strengths": [
                     "Python",
                     "SQL",
-                    "Git",
                 ],
                 "critical_gaps": [
                     "Pandas",
@@ -136,9 +141,45 @@ def test_recommendation_api_falls_back_when_ai_fails(
         response_data = response.json()
 
         assert response_data["source"] == "fallback"
-        assert "recommendations" in response_data
+
+        saved_recommendations = (
+            db.query(Recommendation)
+            .filter(
+                Recommendation.analysis_id == analysis.id
+            )
+            .all()
+        )
+
+        assert len(saved_recommendations) > 0
+
+        skills = [
+            recommendation.skill
+            for recommendation in saved_recommendations
+        ]
+
+        assert "Pandas" in skills
+
+        for recommendation in saved_recommendations:
+            assert recommendation.analysis_id == analysis.id
+            assert recommendation.source == "fallback"
+            assert recommendation.priority
+            assert recommendation.reason
+            assert recommendation.action
 
     finally:
+        saved_recommendations = (
+            db.query(Recommendation)
+            .filter(
+                Recommendation.analysis_id == analysis.id
+            )
+            .all()
+            if analysis is not None
+            else []
+        )
+
+        for recommendation in saved_recommendations:
+            db.delete(recommendation)
+
         if analysis is not None:
             db.delete(analysis)
 

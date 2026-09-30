@@ -1,4 +1,8 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from sqlalchemy.orm import Session
+
+from app.database.database import get_db
+from app.database.models import User, Resume
 
 from app.services.document_extractor import extract_document_text
 from app.services.resume_parser import parse_resume_text
@@ -8,7 +12,7 @@ router = APIRouter(
     tags=["Resume"],
 )
 
-MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
+MAX_FILE_SIZE = 5 * 1024 * 1024
 
 ALLOWED_CONTENT_TYPES = {
     "application/pdf",
@@ -33,7 +37,10 @@ def detect_file_type(file_bytes: bytes) -> str:
 
 
 @router.post("/extract")
-async def extract_resume(file: UploadFile = File(...)):
+async def extract_resume(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
     # --------------------------------------------------
     # 1. Validate content type
     # --------------------------------------------------
@@ -128,9 +135,36 @@ async def extract_resume(file: UploadFile = File(...)):
             status_code=500,
             detail="Unable to analyze the extracted resume content.",
         )
+    
+        # --------------------------------------------------
+    # 8. Save resume to database
+    # --------------------------------------------------
+
+    user = db.query(User).filter(
+        User.email == "development@jobjazz.local"
+    ).first()
+
+    if not user:
+        user = User(
+            email="development@jobjazz.local",
+            name="Development User",
+        )
+        db.add(user)
+        db.flush()
+
+    resume = Resume(
+        user_id=user.id,
+        filename=file.filename or "uploaded_resume",
+        raw_text=extracted_text,
+        profile_data=resume_profile.model_dump(),
+    )
+
+    db.add(resume)
+    db.commit()
+    db.refresh(resume)
 
     # --------------------------------------------------
-    # 8. Return extraction + parsed profile
+    # 9. Return extraction + parsed profile
     # --------------------------------------------------
 
     return {
