@@ -14,7 +14,7 @@ if not api_key:
 client = genai.Client(api_key=api_key)
 
 response = client.models.generate_content(
-    model="gemini-3.7-flash",
+    model="gemini-3.1-flash-lite",
     contents="In one short sentence, explain what a machine learning model does.",
 )
 
