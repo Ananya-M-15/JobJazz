@@ -1,15 +1,80 @@
-import React, { useState } from "react"
+import { useState } from "react"
 import Background from "./components/Background"
 import Navbar from "./components/Navbar"
 import ResumeUpload from "./components/ResumeUpload"
 import CareerProfile from "./components/CareerProfile"
 import JobDescriptionInput from "./components/JobDescriptionInput"
+import AnalysisResults from "./components/AnalysisResults"
+import { analyzeMatching, analyzeSkillGap, generateRecommendations } from "./api/jobjazzApi"
 
 function App() {
   const [showAnalysis, setShowAnalysis] = useState(false)
+  const [workflowStep, setWorkflowStep] = useState("resume") // resume, career_profile, job, analyzing, results
+  
   const [resumeData, setResumeData] = useState(null)
-  const [showCareerProfile, setShowCareerProfile] = useState(false)
-  const [jobData, setJobData] = useState(null)
+  
+  const [matchResult, setMatchResult] = useState(null)
+  const [skillGap, setSkillGap] = useState(null)
+  const [recommendations, setRecommendations] = useState(null)
+
+  const [loadingStep, setLoadingStep] = useState("")
+  const [error, setError] = useState("")
+
+  const startAnalysis = () => {
+    setShowAnalysis(true)
+    setWorkflowStep("resume")
+    setResumeData(null)
+    setMatchResult(null)
+    setSkillGap(null)
+    setRecommendations(null)
+  }
+
+  const handleResumeAnalyzed = (data) => {
+    setResumeData(data)
+    setWorkflowStep("career_profile")
+  }
+
+  const handleCareerProfileContinue = () => {
+    setWorkflowStep("job")
+  }
+
+  const handleJobAnalyzed = async (currentJobData) => {
+    setWorkflowStep("analyzing")
+    setError("")
+
+    try {
+      setLoadingStep("Comparing your profile to the job...")
+      const matchPayload = {
+        resume_id: resumeData.resume_id,
+        job_description_id: currentJobData.job_description_id,
+        resume: resumeData.profile,
+        job: currentJobData.profile
+      }
+      const matchRes = await analyzeMatching(matchPayload)
+      setMatchResult(matchRes.match_result)
+
+      setLoadingStep("Identifying skill gaps...")
+      const gapPayload = {
+        analysis_id: matchRes.analysis_id,
+        match_result: matchRes.match_result
+      }
+      const gapRes = await analyzeSkillGap(gapPayload)
+      setSkillGap(gapRes.skill_gap)
+
+      setLoadingStep("Generating recommendations...")
+      const recPayload = {
+        analysis_id: matchRes.analysis_id,
+        match_result: matchRes.match_result,
+        skill_gap: gapRes.skill_gap
+      }
+      const recRes = await generateRecommendations(recPayload)
+      setRecommendations(recRes)
+
+      setWorkflowStep("results")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An unexpected error occurred during analysis.")
+    }
+  }
 
   // Resume analysis screen
   if (showAnalysis) {
@@ -18,133 +83,61 @@ function App() {
         <Navbar />
         <Background />
 
-        {!resumeData ? (
-          <ResumeUpload
-            onResumeAnalyzed={(data) => {
-              console.log("Resume analysis received:", data)
-              setResumeData(data)
-              setShowCareerProfile(true)
-            }}
-          />
-        ) : showCareerProfile ? (
-          <CareerProfile
-            resumeData={resumeData}
-            onContinue={() => {
-              setShowCareerProfile(false)
-            }}
-          />
-        ) : !jobData ? (
-          <JobDescriptionInput
-            onJobAnalyzed={(data) => {
-              setJobData(data)
-            }}
-          />
-        ) : (
+        {workflowStep === "resume" && (
+          <ResumeUpload onResumeAnalyzed={handleResumeAnalyzed} />
+        )}
+
+        {workflowStep === "career_profile" && (
+          <CareerProfile resumeData={resumeData} onContinue={handleCareerProfileContinue} />
+        )}
+
+        {workflowStep === "job" && (
+          <JobDescriptionInput onJobAnalyzed={handleJobAnalyzed} />
+        )}
+
+        {workflowStep === "analyzing" && (
           <div className="relative z-10 flex min-h-screen items-center justify-center px-6">
-            <div className="w-full max-w-3xl rounded-3xl border border-white/10 bg-white/[0.04] p-8 text-center backdrop-blur-xl">
+            <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-white/[0.04] p-10 text-center backdrop-blur-xl">
               <p className="text-sm font-medium uppercase tracking-[0.2em] text-purple-300">
                 JobJazz Analysis
               </p>
-
-              <h1 className="mt-3 text-3xl font-bold text-white sm:text-4xl">
-                Job description analyzed
-              </h1>
-
-              <p className="mt-3 text-white/50">
-                The job requirements are ready for the next stage.
-              </p>
-
-              {jobData.job_description_id && (
-                <div className="mt-8 rounded-xl border border-white/10 bg-black/20 p-5 text-left">
-                  <p className="text-xs uppercase tracking-[0.15em] text-white/35">
-                    Job Description ID
-                  </p>
-
-                  <p className="mt-2 break-all font-mono text-sm text-white/60">
-                    {jobData.job_description_id}
-                  </p>
-                </div>
-              )}
-
-              {jobData.profile && (
-                <div className="mt-6 rounded-xl border border-white/10 bg-black/20 p-6 text-left">
-                  <h2 className="text-lg font-semibold text-white">
-                    Role understood
-                  </h2>
-
-                  <div className="mt-5 space-y-4">
-
-                    {jobData.profile.job_title && (
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.15em] text-white/35">
-                          Job title
-                        </p>
-
-                        <p className="mt-1 text-white/80">
-                          {jobData.profile.job_title}
-                        </p>
-                      </div>
-                    )}
-
-                    {jobData.profile.required_skills?.length > 0 && (
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.15em] text-white/35">
-                          Required skills
-                        </p>
-
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {jobData.profile.required_skills.map(
-                            (skill, index) => (
-                              <span
-                                key={`${skill}-${index}`}
-                                className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-sm text-white/65"
-                              >
-                                {skill}
-                              </span>
-                            )
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {jobData.profile.preferred_skills?.length > 0 && (
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.15em] text-white/35">
-                          Preferred skills
-                        </p>
-
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {jobData.profile.preferred_skills.map(
-                            (skill, index) => (
-                              <span
-                                key={`${skill}-${index}`}
-                                className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-sm text-white/65"
-                              >
-                                {skill}
-                              </span>
-                            )
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {jobData.profile.experience_requirement && (
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.15em] text-white/35">
-                          Experience
-                        </p>
-
-                        <p className="mt-1 text-white/70">
-                          {jobData.profile.experience_requirement}
-                        </p>
-                      </div>
-                    )}
-
-                  </div>
-                </div>
+              
+              {!error ? (
+                <>
+                    <h1 className="mt-5 text-2xl font-bold text-white sm:text-3xl">
+                        {loadingStep}
+                    </h1>
+                    <div className="mt-10 flex justify-center">
+                        <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/10 border-t-purple-400"></div>
+                    </div>
+                </>
+              ) : (
+                <>
+                    <h1 className="mt-5 text-2xl font-bold text-red-400 sm:text-3xl">
+                        Analysis Failed
+                    </h1>
+                    <div className="mt-6 rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">
+                        {error}
+                    </div>
+                    <button
+                        onClick={() => setWorkflowStep("job")}
+                        className="mt-8 w-full rounded-xl bg-white px-5 py-3 font-semibold text-black transition hover:bg-white/90"
+                    >
+                        Try Again
+                    </button>
+                </>
               )}
             </div>
           </div>
+        )}
+
+        {workflowStep === "results" && (
+          <AnalysisResults 
+            matchResult={matchResult}
+            skillGap={skillGap}
+            recommendations={recommendations}
+            onStartOver={startAnalysis}
+          />
         )}
       </main>
     )
@@ -274,7 +267,7 @@ function App() {
           <div className="mt-11 flex items-center gap-5">
             <button
               className="jj-btn-primary"
-              onClick={() => setShowAnalysis(true)}
+              onClick={startAnalysis}
             >
               Get Started
             </button>

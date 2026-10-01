@@ -80,5 +80,6 @@ async def analyze_match(
     db.refresh(analysis)
 
     return {
+        "analysis_id": str(analysis.id),
         "match_result": result.model_dump(),
     }
