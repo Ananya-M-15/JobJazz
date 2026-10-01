@@ -175,6 +175,7 @@ async def extract_resume(
             "ocr_pages": extraction["ocr_pages"],
             "quality": extraction["quality"],
         },
+        "resume_id": str(resume.id),
         "text": extracted_text,
         "profile": resume_profile.model_dump(),
     }
