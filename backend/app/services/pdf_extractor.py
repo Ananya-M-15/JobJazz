@@ -79,9 +79,13 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
                 if not block:
                     continue
 
+                # Ignore non-text blocks (like images)
+                if len(block) > 6 and block[6] != 0:
+                    continue
+
                 block_text = block[4]
 
-                if not block_text:
+                if not isinstance(block_text, str) or not block_text:
                     continue
 
                 block_text = block_text.strip()
@@ -130,9 +134,13 @@ def extract_pdf_pages_text(file_bytes: bytes) -> list[str]:
                 if not block:
                     continue
 
+                # Ignore non-text blocks (like images)
+                if len(block) > 6 and block[6] != 0:
+                    continue
+
                 block_text = block[4]
 
-                if not block_text:
+                if not isinstance(block_text, str) or not block_text:
                     continue
 
                 block_text = block_text.strip()

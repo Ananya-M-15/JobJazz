@@ -3,6 +3,12 @@ import io
 import pymupdf
 import pytesseract
 from PIL import Image
+import os
+
+if os.name == 'nt':
+    tesseract_path = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+    if os.path.exists(tesseract_path):
+        pytesseract.pytesseract.tesseract_cmd = tesseract_path
 
 
 def extract_text_from_image(image_bytes: bytes) -> str:

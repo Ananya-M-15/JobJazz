@@ -24,11 +24,16 @@ function JobDescriptionInput({ onJobAnalyzed }) {
             console.log("Job description analysis received:", result)
             onJobAnalyzed(result)
         } catch (err) {
-            setError(
-                err instanceof Error
-                    ? err.message
-                    : "Something went wrong while analyzing the job description."
-            )
+            // Check if error is an object with detail (from backend 422)
+            if (err.detail) {
+                setError(err.detail)
+            } else {
+                setError(
+                    err instanceof Error
+                        ? err.message
+                        : "Something went wrong while analyzing the job description."
+                )
+            }
         } finally {
             setLoading(false)
         }
@@ -48,11 +53,15 @@ function JobDescriptionInput({ onJobAnalyzed }) {
             console.log("Job description PDF analysis received:", result)
             onJobAnalyzed(result)
         } catch (err) {
-            setError(
-                err instanceof Error
-                    ? err.message
-                    : "Something went wrong while analyzing the job description PDF."
-            )
+            if (err.detail) {
+                setError(err.detail)
+            } else {
+                setError(
+                    err instanceof Error
+                        ? err.message
+                        : "Something went wrong while analyzing the job description PDF."
+                )
+            }
         } finally {
             setLoading(false)
         }
@@ -82,33 +91,33 @@ function JobDescriptionInput({ onJobAnalyzed }) {
 
     return (
         <section className="relative z-10 mx-auto flex min-h-screen max-w-5xl flex-col justify-center px-6 py-28 sm:px-10 lg:px-12">
-            <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-8 backdrop-blur-xl sm:p-10">
+            <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/50 sm:p-10 text-center md:text-left">
 
                 {/* Header */}
                 <div>
-                    <p className="text-sm font-medium uppercase tracking-[0.2em] text-purple-300">
+                    <p className="text-sm font-medium uppercase tracking-[0.2em] text-indigo-600">
                         JobJazz Analysis
                     </p>
 
-                    <h1 className="mt-3 text-4xl font-bold tracking-tight text-white sm:text-5xl">
+                    <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 sm:text-5xl">
                         Analyze your fit for a job
                     </h1>
 
-                    <p className="mt-4 max-w-2xl text-base leading-7 text-white/55 sm:text-lg">
+                    <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg mx-auto md:mx-0">
                         Provide a job description and JobJazz will understand the role,
                         required skills, experience, education, and important keywords.
                     </p>
                 </div>
 
                 {/* Mode Toggle */}
-                <div className="mt-8 flex gap-4">
+                <div className="mt-8 flex justify-center md:justify-start gap-4">
                     <button
                         type="button"
                         onClick={() => { setMode("text"); setError(""); }}
-                        className={`rounded-xl px-5 py-2 text-sm font-medium transition ${
+                        className={`rounded-xl px-5 py-2 text-sm font-semibold transition shadow-sm ${
                             mode === "text"
-                                ? "bg-purple-500/20 text-purple-200 border border-purple-500/30"
-                                : "text-white/60 hover:bg-white/5 hover:text-white"
+                                ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
                         }`}
                     >
                         Paste Text
@@ -116,10 +125,10 @@ function JobDescriptionInput({ onJobAnalyzed }) {
                     <button
                         type="button"
                         onClick={() => { setMode("pdf"); setError(""); }}
-                        className={`rounded-xl px-5 py-2 text-sm font-medium transition ${
+                        className={`rounded-xl px-5 py-2 text-sm font-semibold transition shadow-sm ${
                             mode === "pdf"
-                                ? "bg-purple-500/20 text-purple-200 border border-purple-500/30"
-                                : "text-white/60 hover:bg-white/5 hover:text-white"
+                                ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
                         }`}
                     >
                         Upload PDF
@@ -127,12 +136,12 @@ function JobDescriptionInput({ onJobAnalyzed }) {
                 </div>
 
                 {/* Job Description Input */}
-                <div className="mt-6">
+                <div className="mt-6 text-left">
                     {mode === "text" ? (
                         <>
                             <label
                                 htmlFor="job-description"
-                                className="mb-3 block text-sm font-medium text-white/70"
+                                className="mb-3 block text-sm font-medium text-slate-700"
                             >
                                 Job description text
                             </label>
@@ -145,19 +154,20 @@ function JobDescriptionInput({ onJobAnalyzed }) {
                                     if (error) setError("")
                                 }}
                                 placeholder="Paste the complete job description here..."
-                                rows={14}
-                                className="w-full resize-y rounded-2xl border border-white/10 bg-black/20 px-5 py-4 text-sm leading-7 text-white outline-none placeholder:text-white/25 transition focus:border-purple-400/40 focus:bg-black/30"
+                                rows={12}
+                                className="w-full resize-y rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm leading-7 text-slate-900 outline-none placeholder:text-slate-400 transition focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-50"
                             />
 
                             {/* Character count */}
                             <div className="mt-2 flex justify-end">
-                                <span className="text-xs text-white/30">
+                                <span className="text-xs font-medium text-slate-500">
                                     {jobDescription.length} characters
                                 </span>
                             </div>
                         </>
                     ) : (
-                        <div className="rounded-2xl border border-white/10 bg-black/20 p-8 text-center transition hover:border-purple-400/40">
+                        <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-8 text-center transition hover:border-indigo-300 hover:bg-slate-100 cursor-pointer"
+                             onClick={() => fileInputRef.current?.click()}>
                             <input
                                 type="file"
                                 accept=".pdf"
@@ -167,9 +177,9 @@ function JobDescriptionInput({ onJobAnalyzed }) {
                             />
                             {pdfFile ? (
                                 <div className="flex flex-col items-center gap-4">
-                                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-purple-500/20">
+                                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
                                         <svg
-                                            className="h-8 w-8 text-purple-300"
+                                            className="h-8 w-8"
                                             fill="none"
                                             viewBox="0 0 24 24"
                                             stroke="currentColor"
@@ -183,26 +193,22 @@ function JobDescriptionInput({ onJobAnalyzed }) {
                                         </svg>
                                     </div>
                                     <div>
-                                        <p className="text-sm font-medium text-white">{pdfFile.name}</p>
-                                        <p className="text-xs text-white/50">{(pdfFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                                        <p className="text-sm font-semibold text-slate-900">{pdfFile.name}</p>
+                                        <p className="text-xs font-medium text-slate-500">{(pdfFile.size / 1024 / 1024).toFixed(2)} MB</p>
                                     </div>
                                     <button
                                         type="button"
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="mt-2 text-sm text-purple-300 hover:text-purple-200"
+                                        onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                                        className="mt-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700"
                                     >
                                         Select a different file
                                     </button>
                                 </div>
                             ) : (
                                 <div className="flex flex-col items-center gap-4">
-                                    <button
-                                        type="button"
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="rounded-full bg-white/10 p-4 transition hover:bg-white/20"
-                                    >
+                                    <div className="rounded-full bg-white p-4 shadow-sm border border-slate-100 text-slate-400">
                                         <svg
-                                            className="h-8 w-8 text-white/70"
+                                            className="h-8 w-8"
                                             fill="none"
                                             viewBox="0 0 24 24"
                                             stroke="currentColor"
@@ -214,10 +220,10 @@ function JobDescriptionInput({ onJobAnalyzed }) {
                                                 d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
                                             />
                                         </svg>
-                                    </button>
+                                    </div>
                                     <div>
-                                        <p className="text-sm font-medium text-white">Upload Job Description PDF</p>
-                                        <p className="mt-1 text-xs text-white/50">Only PDF files are supported</p>
+                                        <p className="text-sm font-semibold text-slate-900">Upload Job Description PDF</p>
+                                        <p className="mt-1 text-xs font-medium text-slate-500">Only PDF files are supported</p>
                                     </div>
                                 </div>
                             )}
@@ -227,7 +233,7 @@ function JobDescriptionInput({ onJobAnalyzed }) {
 
                 {/* Error */}
                 {error && (
-                    <div className="mt-4 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-300">
+                    <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
                         {error}
                     </div>
                 )}

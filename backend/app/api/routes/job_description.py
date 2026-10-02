@@ -57,6 +57,25 @@ async def analyze_job_description(
 
     profile = parse_job_description(request.text)
     
+    # Validation logic
+    text_length = len(request.text.strip())
+    if text_length < 100:
+        raise HTTPException(
+            status_code=422,
+            detail="We couldn't read enough text from this. Try pasting a more complete job description."
+        )
+        
+    has_meaningful_title = profile.job_title and profile.job_title != "Untitled Job Description"
+    total_skills = len(profile.required_skills) + len(profile.preferred_skills)
+    has_experience = bool(profile.experience_requirement)
+    has_education = len(profile.education_requirements) > 0
+    
+    if not has_meaningful_title and total_skills < 2 and not has_experience and not has_education:
+        raise HTTPException(
+            status_code=422,
+            detail="This doesn't look like a job description. We found text, but couldn't identify enough job-related requirements. Please paste the actual job posting."
+        )
+
     job_description = _save_job_description(db, request.text, profile.model_dump())
 
     return {
@@ -138,6 +157,25 @@ async def analyze_job_description_pdf(
         raise HTTPException(
             status_code=500,
             detail="Unable to analyze the extracted job description content.",
+        )
+
+    # Validation logic
+    text_length = len(extracted_text.strip())
+    if text_length < 100:
+        raise HTTPException(
+            status_code=422,
+            detail="We couldn't read enough text from this PDF. Try a text-based PDF or paste the job description instead."
+        )
+        
+    has_meaningful_title = profile.job_title and profile.job_title != "Untitled Job Description"
+    total_skills = len(profile.required_skills) + len(profile.preferred_skills)
+    has_experience = bool(profile.experience_requirement)
+    has_education = len(profile.education_requirements) > 0
+    
+    if not has_meaningful_title and total_skills < 2 and not has_experience and not has_education:
+        raise HTTPException(
+            status_code=422,
+            detail="This doesn't look like a job description. We found text in this document, but couldn't identify enough job-related requirements. Please upload the actual job posting."
         )
 
     job_description = _save_job_description(db, extracted_text, profile.model_dump())

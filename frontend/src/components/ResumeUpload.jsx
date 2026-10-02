@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { extractResume } from "../api/jobjazzApi";
 
 function ResumeUpload({ onResumeAnalyzed }) {
@@ -51,17 +51,17 @@ function ResumeUpload({ onResumeAnalyzed }) {
 
     return (
         <section className="relative z-10 mx-auto flex min-h-screen max-w-4xl flex-col justify-center px-6 py-24">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-8 backdrop-blur-xl">
+            <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/50 sm:p-10 text-center md:text-left">
                 <div className="mb-8">
-                    <p className="text-sm font-medium uppercase tracking-[0.2em] text-purple-300">
+                    <p className="text-sm font-medium uppercase tracking-[0.2em] text-indigo-600">
                         JobJazz Analysis
                     </p>
 
-                    <h2 className="mt-3 text-3xl font-bold text-white sm:text-4xl">
+                    <h2 className="mt-3 text-3xl font-bold text-slate-900 sm:text-4xl">
                         Upload your resume
                     </h2>
 
-                    <p className="mt-3 max-w-2xl text-white/60">
+                    <p className="mt-3 max-w-2xl text-slate-600 mx-auto md:mx-0">
                         Upload your PDF resume and JobJazz will extract your
                         professional profile for the next stages of analysis.
                     </p>
@@ -69,15 +69,19 @@ function ResumeUpload({ onResumeAnalyzed }) {
 
                 <label
                     htmlFor="resume-upload"
-                    className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-white/20 bg-black/20 px-6 py-14 text-center transition hover:border-white/40 hover:bg-white/[0.04]"
+                    className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-6 py-14 text-center transition hover:border-indigo-300 hover:bg-slate-100"
                 >
-                    <div className="text-4xl">↑</div>
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-sm border border-slate-100 text-indigo-600 mb-4">
+                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                    </div>
 
-                    <p className="mt-4 text-lg font-medium text-white">
+                    <p className="text-lg font-semibold text-slate-900">
                         {file ? file.name : "Choose your resume"}
                     </p>
 
-                    <p className="mt-2 text-sm text-white/50">
+                    <p className="mt-2 text-sm font-medium text-slate-500">
                         PDF files only
                     </p>
 
@@ -91,19 +95,21 @@ function ResumeUpload({ onResumeAnalyzed }) {
                 </label>
 
                 {error && (
-                    <div className="mt-4 rounded-lg border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-300">
+                    <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
                         {error}
                     </div>
                 )}
 
-                <button
-                    type="button"
-                    onClick={handleUpload}
-                    disabled={!file || loading}
-                    className="mt-6 w-full rounded-xl bg-white px-5 py-3 font-semibold text-black transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                    {loading ? "Analyzing resume..." : "Analyze Resume"}
-                </button>
+                <div className="mt-8 flex justify-end">
+                    <button
+                        type="button"
+                        onClick={handleUpload}
+                        disabled={!file || loading}
+                        className="w-full sm:w-auto jj-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {loading ? "Analyzing resume..." : "Analyze Resume →"}
+                    </button>
+                </div>
             </div>
         </section>
     );

@@ -77,7 +77,7 @@ class FakeJobProfile:
     def model_dump(self):
         return {
             "job_title": "Fake PDF Job",
-            "required_skills": ["FakeSkill"],
+            "required_skills": ["FakeSkill1", "FakeSkill2"],
             "preferred_skills": [],
             "experience_level": "",
             "education": "",
@@ -87,11 +87,27 @@ class FakeJobProfile:
     def job_title(self):
         return "Fake PDF Job"
 
+    @property
+    def required_skills(self):
+        return ["FakeSkill1", "FakeSkill2"]
+        
+    @property
+    def preferred_skills(self):
+        return []
+        
+    @property
+    def experience_requirement(self):
+        return ""
+        
+    @property
+    def education_requirements(self):
+        return []
+
 
 def test_job_description_pdf_is_saved_to_database(monkeypatch):
     filename = f"database_test_jd_{uuid.uuid4().hex}.pdf"
     fake_pdf = b"%PDF-1.4 fake test pdf"
-    fake_extracted_text = "Fake PDF Job\nRequired Skills: FakeSkill"
+    fake_extracted_text = "Fake PDF Job\nRequired Skills: FakeSkill1, FakeSkill2\nThis is a long description to ensure it passes the length check. " * 5
 
     def fake_extract_document_text(file_bytes, file_type):
         return {

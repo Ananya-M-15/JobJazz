@@ -4,14 +4,17 @@ import Navbar from "./components/Navbar"
 import ResumeUpload from "./components/ResumeUpload"
 import CareerProfile from "./components/CareerProfile"
 import JobDescriptionInput from "./components/JobDescriptionInput"
-import AnalysisResults from "./components/AnalysisResults"
+import JobDescriptionConfirmation from "./components/JobDescriptionConfirmation"
+import DashboardLayout from "./components/dashboard/DashboardLayout"
+import HowItWorks from "./components/home/HowItWorks"
 import { analyzeMatching, analyzeSkillGap, generateRecommendations } from "./api/jobjazzApi"
 
 function App() {
   const [showAnalysis, setShowAnalysis] = useState(false)
-  const [workflowStep, setWorkflowStep] = useState("resume") // resume, career_profile, job, analyzing, results
+  const [workflowStep, setWorkflowStep] = useState("resume") // resume, career_profile, job, job_confirmation, analyzing, results
   
   const [resumeData, setResumeData] = useState(null)
+  const [jobData, setJobData] = useState(null)
   
   const [matchResult, setMatchResult] = useState(null)
   const [skillGap, setSkillGap] = useState(null)
@@ -24,6 +27,15 @@ function App() {
     setShowAnalysis(true)
     setWorkflowStep("resume")
     setResumeData(null)
+    setJobData(null)
+    setMatchResult(null)
+    setSkillGap(null)
+    setRecommendations(null)
+  }
+
+  const analyzeAnotherJob = () => {
+    setWorkflowStep("job")
+    setJobData(null)
     setMatchResult(null)
     setSkillGap(null)
     setRecommendations(null)
@@ -38,7 +50,13 @@ function App() {
     setWorkflowStep("job")
   }
 
-  const handleJobAnalyzed = async (currentJobData) => {
+  const handleJobAnalyzed = (currentJobData) => {
+    setJobData(currentJobData)
+    setWorkflowStep("job_confirmation")
+    setError("")
+  }
+
+  const handleJobConfirmed = async () => {
     setWorkflowStep("analyzing")
     setError("")
 
@@ -46,9 +64,9 @@ function App() {
       setLoadingStep("Comparing your profile to the job...")
       const matchPayload = {
         resume_id: resumeData.resume_id,
-        job_description_id: currentJobData.job_description_id,
+        job_description_id: jobData.job_description_id,
         resume: resumeData.profile,
-        job: currentJobData.profile
+        job: jobData.profile
       }
       const matchRes = await analyzeMatching(matchPayload)
       setMatchResult(matchRes.match_result)
@@ -80,7 +98,7 @@ function App() {
   if (showAnalysis) {
     return (
       <main className="relative min-h-screen overflow-hidden text-white">
-        <Navbar />
+        <Navbar onAnalyzeClick={startAnalysis} />
         <Background />
 
         {workflowStep === "resume" && (
@@ -93,6 +111,14 @@ function App() {
 
         {workflowStep === "job" && (
           <JobDescriptionInput onJobAnalyzed={handleJobAnalyzed} />
+        )}
+
+        {workflowStep === "job_confirmation" && jobData && (
+          <JobDescriptionConfirmation 
+            profile={jobData.profile} 
+            onConfirm={handleJobConfirmed} 
+            onCancel={() => setWorkflowStep("job")} 
+          />
         )}
 
         {workflowStep === "analyzing" && (
@@ -132,11 +158,12 @@ function App() {
         )}
 
         {workflowStep === "results" && (
-          <AnalysisResults 
+          <DashboardLayout 
             matchResult={matchResult}
             skillGap={skillGap}
             recommendations={recommendations}
-            onStartOver={startAnalysis}
+            jobProfile={jobData?.profile}
+            onStartOver={analyzeAnotherJob}
           />
         )}
       </main>
@@ -145,137 +172,95 @@ function App() {
 
   // Landing page
   return (
-    <main className="relative min-h-screen overflow-hidden text-white select-none">
-
-      {/* Untouched Navbar */}
-      <Navbar />
-
-      {/* Background with Diamond Grid, Color Radiations, 3D Rings & Glowing Orb */}
+    <main className="relative min-h-screen text-slate-900 bg-slate-50 selection:bg-indigo-100 selection:text-indigo-900">
+      <Navbar onAnalyzeClick={startAnalysis} />
+      
       <Background />
 
       {/* Hero Section */}
-      <section className="relative z-10 mx-auto flex min-h-screen max-w-7xl flex-col justify-center px-6 pt-28 pb-20 sm:px-12 lg:px-16">
-        <div className="max-w-2xl lg:max-w-3xl">
-
-          {/* Heading */}
-          <h1 className="jj-display text-[2.75rem] font-bold leading-[1.08] tracking-[-0.038em] text-white sm:text-[4rem] lg:text-[4.5rem]">
-            Scale Your Productivity
-            <br />
-            Beyond Boundaries
+      <section className="relative z-10 mx-auto max-w-7xl px-6 pt-32 pb-20 sm:pt-40 sm:px-12 lg:px-16">
+        <div className="max-w-2xl lg:text-left">
+          <h1 className="text-5xl font-bold tracking-tight text-slate-900 md:text-6xl max-w-xl">
+            Make every application count.
           </h1>
-
-          {/* Description */}
-          <p className="mt-6 max-w-xl text-base leading-[1.68] text-[#938ea9] sm:text-[1.0625rem]">
-            Launch faster with everything you need out of the box.
-            PostgreSQL database, auth, file storage, serverless functions, real-time
-            updates, vector support — all open source and built for scale.
+          <p className="mt-6 text-lg leading-8 text-slate-600 max-w-xl">
+            See how your resume matches the job before you apply. JobJazz highlights your strengths, identifies important gaps, and gives you clear next steps to improve your fit.
           </p>
-
-          {/* Partner / Integration Logos */}
-          <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 sm:gap-x-7">
-
-            {/* Loom */}
-            <div className="jj-partner-badge">
-              <svg
-                className="h-4 w-4 shrink-0"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <circle cx="12" cy="12" r="3.2" />
-                <path
-                  d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.28 5.28l2.12 2.12M16.6 16.6l2.12 2.12M5.28 18.72l2.12-2.12M16.6 7.4l2.12-2.12"
-                  stroke="currentColor"
-                  strokeWidth="2.4"
-                  strokeLinecap="round"
-                />
-              </svg>
-              <span>Loom</span>
-            </div>
-
-            {/* Calendly */}
-            <div className="jj-partner-badge">
-              <svg
-                className="h-4 w-4 shrink-0"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="9.5" />
-                <path d="M15 8.8a4.5 4.5 0 1 0 0 6.4" />
-              </svg>
-              <span>Calendly</span>
-            </div>
-
-            {/* Zapier */}
-            <div className="jj-partner-badge">
-              <svg
-                className="h-4 w-4 shrink-0"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d="M12 2a1 1 0 0 1 1 1v7.5l5.3-5.3a1 1 0 0 1 1.4 1.4L14.4 12l5.3 5.3a1 1 0 0 1-1.4 1.4L13 13.4V21a1 1 0 1 1-2 0v-7.6l-5.3 5.3a1 1 0 0 1-1.4-1.4L9.6 12 4.3 6.7a1 1 0 0 1 1.4-1.4L11 10.5V3a1 1 0 0 1 1-1z" />
-              </svg>
-              <span>Zapier</span>
-            </div>
-
-            {/* OpenAI */}
-            <div className="jj-partner-badge">
-              <svg
-                className="h-4 w-4 shrink-0"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.9"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M19.5 10c.3.6.5 1.3.5 2 0 2.8-2.2 5-5 5h-1v2a3 3 0 0 1-3 3c-.8 0-1.5-.3-2.1-.8M4.5 14c-.3-.6-.5-1.3-.5-2 0-2.8 2.2-5 5-5h1V5a3 3 0 0 1 3-3c.8 0 1.5.3 2.1.8" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
-              <span>Open AI</span>
-            </div>
-
-            {/* Notion */}
-            <div className="jj-partner-badge">
-              <svg
-                className="h-4 w-4 shrink-0"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d="M4 4.5A2.5 2.5 0 0 1 6.5 2h11A2.5 2.5 0 0 1 20 4.5v15a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 19.5v-15zM7.5 7v10h2.2l4.8-7v7h2V7h-2.2L9.5 14V7h-2z" />
-              </svg>
-              <span>Notion</span>
-            </div>
-
-            {/* Figma */}
-            <div className="jj-partner-badge">
-              <svg
-                className="h-4 w-4 shrink-0"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d="M8 2h4v5H8a2.5 2.5 0 1 1 0-5zm4 0h4a2.5 2.5 0 0 1 0 5h-4V2zm0 5h4a2.5 2.5 0 0 1 0 5h-4V7zm-4 0h4v5H8a2.5 2.5 0 0 1 0-5zm0 5h4v4.5A2.5 2.5 0 1 1 8 14z" />
-              </svg>
-              <span>Figma</span>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="mt-11 flex items-center gap-5">
-            <button
-              className="jj-btn-primary"
-              onClick={startAnalysis}
-            >
-              Get Started
-            </button>
-
-            <button className="jj-btn-secondary">
-              Request a demo
+          
+          <div className="mt-10 flex flex-col sm:flex-row items-center justify-start gap-4">
+            <button onClick={startAnalysis} className="jj-btn-primary">
+              Analyze my resume
             </button>
           </div>
+          
+          <p className="mt-6 text-sm font-medium text-slate-500">
+            Resume analysis &bull; Job matching &bull; Skill gaps &bull; Actionable insights
+          </p>
+        </div>
+      </section>
+
+      <HowItWorks />
+      
+      {/* Capabilities Section */}
+      <section id="capabilities" className="relative z-10 mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8 border-t border-slate-200 bg-slate-50">
+        <div className="mx-auto max-w-2xl text-center lg:text-left lg:mx-0">
+            <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+              A clearer view of your fit
+            </h2>
+        </div>
+
+        <div className="mx-auto mt-16 max-w-5xl lg:mx-0 sm:mt-20">
+            <dl className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4 text-left">
+                
+                <div className="flex flex-col">
+                    <dt className="text-lg font-semibold leading-7 text-slate-900">
+                        Skills
+                    </dt>
+                    <dd className="mt-2 text-base leading-7 text-slate-600">
+                        See which requirements your resume already covers.
+                    </dd>
+                </div>
+                
+                <div className="flex flex-col">
+                    <dt className="text-lg font-semibold leading-7 text-slate-900">
+                        Experience
+                    </dt>
+                    <dd className="mt-2 text-base leading-7 text-slate-600">
+                        Understand how your experience aligns with the role.
+                    </dd>
+                </div>
+
+                <div className="flex flex-col">
+                    <dt className="text-lg font-semibold leading-7 text-slate-900">
+                        Education
+                    </dt>
+                    <dd className="mt-2 text-base leading-7 text-slate-600">
+                        Check how your academic background matches the stated requirements.
+                    </dd>
+                </div>
+
+                <div className="flex flex-col">
+                    <dt className="text-lg font-semibold leading-7 text-slate-900">
+                        Keywords & gaps
+                    </dt>
+                    <dd className="mt-2 text-base leading-7 text-slate-600">
+                        Identify important requirements that may need attention.
+                    </dd>
+                </div>
+
+            </dl>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="relative z-10 mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8 text-center">
+        <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+          Know where you stand before you apply.
+        </h2>
+        <div className="mt-10 flex items-center justify-center">
+          <button onClick={startAnalysis} className="jj-btn-primary">
+            Analyze my resume
+          </button>
         </div>
       </section>
     </main>
