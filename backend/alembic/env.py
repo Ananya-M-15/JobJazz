@@ -6,7 +6,7 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from dotenv import load_dotenv
 
-from app.database.database import Base
+from app.database.database import Base, normalize_database_url
 from app.database import models
 
 load_dotenv()
@@ -22,15 +22,7 @@ target_metadata = Base.metadata
 
 
 def get_database_url():
-    database_url = os.getenv("DATABASE_URL")
-
-    if not database_url:
-        database_url = "postgresql://postgres:postgres@localhost:5432/jobjazz"
-
-    if database_url.startswith("postgres://"):
-        database_url = database_url.replace("postgres://", "postgresql://", 1)
-
-    return database_url
+    return normalize_database_url(os.getenv("DATABASE_URL"))
 
 
 def run_migrations_offline() -> None:

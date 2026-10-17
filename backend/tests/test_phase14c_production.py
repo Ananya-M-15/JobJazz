@@ -33,11 +33,39 @@ def test_cors_origins_configuration(monkeypatch):
 
 
 def test_database_url_postgres_scheme_normalization():
-    """Verify that postgres:// scheme is converted to postgresql://."""
-    raw_url = "postgres://usr:pwd@host.cloud.com:5432/mydb"
-    normalized = raw_url.replace("postgres://", "postgresql://", 1)
-    assert normalized.startswith("postgresql://")
-    assert not normalized.startswith("postgres://")
+    """Verify that production normalize_database_url converts schemes and preserves query parameters."""
+    from app.database.database import normalize_database_url
+
+    # 1. Test postgres:// conversion with Neon SSL query parameter preservation
+    raw_neon = "postgres://usr:pwd@ep-cool-forest-12345.us-east-2.aws.neon.tech/neondb?sslmode=require"
+    normalized_neon = normalize_database_url(raw_neon)
+    assert normalized_neon.startswith("postgresql://")
+    assert not normalized_neon.startswith("postgres://")
+    assert "?sslmode=require" in normalized_neon
+    assert "ep-cool-forest-12345" in normalized_neon
+
+    # 2. Test legacy postgresql+psycopg2:// conversion to standard postgresql://
+    legacy_url = "postgresql+psycopg2://usr:pwd@host.cloud.com:5432/mydb"
+    normalized_legacy = normalize_database_url(legacy_url)
+    assert normalized_legacy.startswith("postgresql://")
+    assert "+psycopg2" not in normalized_legacy
+
+    # 3. Test standard postgresql:// URL remains unchanged
+    standard_url = "postgresql://usr:pwd@host.cloud.com:5432/mydb"
+    assert normalize_database_url(standard_url) == standard_url
+
+    # 4. Test fallback to default when url is None or empty string
+    assert normalize_database_url(None) == "postgresql://postgres:postgres@localhost:5432/jobjazz"
+    assert normalize_database_url("") == "postgresql://postgres:postgres@localhost:5432/jobjazz"
+
+
+def test_postgresql_driver_dialect_resolution():
+    """Verify SQLAlchemy resolves postgresql:// to the psycopg (v3) driver cleanly."""
+    from sqlalchemy.engine.url import make_url
+    url = make_url("postgresql://user:password@localhost:5432/testdb")
+    dialect_cls = url.get_dialect()
+    assert dialect_cls.name == "postgresql"
+    assert dialect_cls.driver == "psycopg"
 
 
 def test_step_update_schema_accepts_user_notes():

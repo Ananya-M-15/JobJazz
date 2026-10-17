@@ -4,13 +4,25 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://postgres:postgres@localhost:5432/jobjazz"
-)
+def normalize_database_url(url: str | None) -> str:
+    """
+    Normalize database connection URLs for SQLAlchemy.
+    - Converts legacy 'postgres://' scheme to 'postgresql://'
+    - Converts legacy 'postgresql+psycopg2://' to standard 'postgresql://' (using psycopg v3)
+    - Preserves query parameters like '?sslmode=require' for Neon / managed PostgreSQL
+    """
+    if not url:
+        return "postgresql://postgres:postgres@localhost:5432/jobjazz"
 
-if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql://", 1)
+    elif url.startswith("postgresql+psycopg2://"):
+        return url.replace("postgresql+psycopg2://", "postgresql://", 1)
+
+    return url
+
+
+DATABASE_URL = normalize_database_url(os.getenv("DATABASE_URL"))
 
 engine = create_engine(
     DATABASE_URL,
