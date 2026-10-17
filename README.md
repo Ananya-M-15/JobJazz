@@ -1,248 +1,140 @@
-# JobJazz — Your Career, in Tune.
+# JobJazz — Your Career, in Tune 🎵
 
-JobJazz is a full-stack, AI-powered career intelligence and resume optimization platform. It bridges the gap between candidate resumes and job descriptions by analyzing skill alignments, identifying critical experience/education gaps, generating prioritized action plans, and building tailored, week-by-week learning roadmaps.
+**JobJazz** is an AI-powered career intelligence platform that helps job seekers understand how well their resumes match job descriptions, identify skill gaps, and build personalized learning roadmaps to improve their career readiness.
 
----
+🔗 **Live Demo:** [Try JobJazz](https://job-jazz.vercel.app/)
 
-## Architecture & Technology Stack
+## ✨ Features
 
-```
-   ┌──────────────────────────────────────────────────────────────┐
-   │                 Frontend (React 18 + Vite)                  │
-   │  - Tailwind CSS + Glassmorphism UI                          │
-   │  - Interactive Dashboard, Skills Matrix, Learning Roadmap   │
-   │  - Session Recovery & Client-side Preference Management     │
-   └──────────────────────────────┬───────────────────────────────┘
-                                  │ HTTP / JSON REST APIs
-                                  ▼
-   ┌──────────────────────────────────────────────────────────────┐
-   │                 Backend (FastAPI + Python 3.12)              │
-   │  - PyMuPDF + Tesseract OCR Document Extraction Engine        │
-   │  - Deterministic Profile Extraction & Skill Gap Engine       │
-   │  - Google Gemini AI Integration (with Deterministic Fallback)│
-   │  - Pydantic v2 Schema Validation & Timetable Scheduler       │
-   └──────────────────────────────┬───────────────────────────────┘
-                                  │ SQLAlchemy 2.0 / Alembic
-                                  ▼
-   ┌──────────────────────────────────────────────────────────────┐
-   │                 Database (PostgreSQL 17)                     │
-   │  - Users, Resumes, Job Descriptions, Match Analyses,         │
-   │    Skill Gaps, Recommendations, and Learning Roadmaps        │
-   └──────────────────────────────────────────────────────────────┘
-```
+- **Resume Analysis:** Extracts relevant information from uploaded PDF resumes.
+- **Job Description Matching:** Analyzes resume alignment with job requirements.
+- **Skill Gap Analysis:** Identifies missing skills and areas for improvement.
+- **AI-Powered Recommendations:** Provides actionable suggestions to strengthen your profile.
+- **Personalized Learning Roadmaps:** Organizes skill development into structured learning plans.
+- **PDF & OCR Support:** Supports text extraction from PDFs, including scanned documents.
+- **Session Recovery:** Helps restore analysis progress after a page refresh.
 
-- **Frontend**: React 18, Vite, Tailwind CSS, Lucide React, Motion.
-- **Backend**: Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2.0, Alembic, PyMuPDF (`fitz`), Pillow, PyTesseract.
-- **Database**: PostgreSQL (Docker for local development; managed PostgreSQL in production).
-- **AI Engine**: Google Gemini API (`gemini-2.5-flash` / `gemini-1.5-flash`) with robust deterministic fallback.
+## 🛠️ Tech Stack
 
----
+| Category | Technologies |
+|---|---|
+| Frontend | React, Vite, Tailwind CSS |
+| Backend | Python, FastAPI, Pydantic |
+| Database | PostgreSQL |
+| ORM & Migrations | SQLAlchemy, Alembic |
+| AI Integration | Google Gemini API |
+| Document Processing | PyMuPDF, Tesseract OCR, Pillow |
+| Deployment | Vercel, Render |
+| Testing & Quality | Pytest, ESLint |
 
-## Local Development Quickstart
+## 🏗️ Architecture
 
-### 1. Prerequisites
-- **Python**: 3.11 or 3.12
-- **Node.js**: 18.x or 20.x with `npm`
-- **Docker**: For local PostgreSQL container
+JobJazz uses a decoupled full-stack architecture:
 
-### 2. Start PostgreSQL
+- **Frontend:** React application deployed on Vercel.
+- **Backend:** FastAPI REST API deployed on Render.
+- **Database:** PostgreSQL hosted on Neon.
+- **AI Layer:** Google Gemini integration with deterministic fallback logic.
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Python 3.12
+- Node.js and npm
+- PostgreSQL
+- Google Gemini API key (optional)
+
+### 1. Clone the repository
+
 ```bash
-docker compose up -d db
+git clone https://github.com/Ananya-M-15/JobJazz.git
+cd JobJazz
 ```
-The database runs on `localhost:5432` with credentials `postgres:postgres` and database `jobjazz`.
 
-### 3. Backend Setup
-From the repository root:
+### 2. Set up the backend
+
 ```bash
-# Create and activate virtual environment
 python -m venv .venv
-# Windows:
+```
+
+Activate the virtual environment:
+
+```bash
+# Windows
 .venv\Scripts\activate
-# macOS/Linux:
+
+# macOS/Linux
 source .venv/bin/activate
+```
 
-# Install dependencies
+Install dependencies:
+
+```bash
 pip install -r backend/requirements.txt
+```
 
-# Configure environment
-cp .env.example .env
-# Edit .env to set GEMINI_API_KEY if testing AI capabilities
+Configure the required environment variables, including `DATABASE_URL`. Set `GEMINI_API_KEY` if you want to use Gemini-powered features.
 
-# Apply database migrations
+Run database migrations and start the backend:
+
+```bash
 cd backend
 alembic upgrade head
-cd ..
-
-# Run development server
-python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+python -m uvicorn app.main:app --reload
 ```
-Backend API interactive docs: `http://127.0.0.1:8000/docs`
-Health check: `http://127.0.0.1:8000/health`
 
-### 4. Frontend Setup
-In a separate terminal:
+Backend API documentation: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+
+### 3. Set up the frontend
+
+Open a separate terminal:
+
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start Vite dev server
 npm run dev
 ```
-Frontend application: `http://localhost:5173`
 
----
+Open the local URL displayed by Vite in your terminal.
 
-## Testing & Quality Assurance
+## 🧪 Testing
 
-### Run Backend Test Suite
+Run the backend test suite from the repository root:
+
 ```bash
-# From repository root
-pytest backend/tests
+python -m pytest backend/tests -q
 ```
 
-### Run Frontend Linting & Production Build
+Run frontend quality checks:
+
 ```bash
 cd frontend
 npm run lint
 npm run build
 ```
 
----
+## 🔐 Environment Variables
 
-## Environment Variables Reference
+Configure secrets and environment-specific values through local environment files or your hosting provider's environment settings.
 
-### Backend (`.env` or Cloud Service Settings)
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `DATABASE_URL` | Yes | `postgresql://postgres:postgres@localhost:5432/jobjazz` | PostgreSQL connection string. Supports `postgres://` or `postgresql://`. |
-| `GEMINI_API_KEY` | No | None | Google Gemini API key. If omitted, JobJazz operates seamlessly using deterministic engines. |
-| `CORS_ORIGINS` | No | `http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173` | Comma-separated list of allowed web client origins. |
-| `ENVIRONMENT` | No | `development` | Deployment environment name (`development`, `production`). |
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL` | PostgreSQL database connection |
+| `GEMINI_API_KEY` | Google Gemini API access |
+| `CORS_ORIGINS` | Allowed frontend origins |
+| `VITE_API_BASE_URL` | Backend API URL used by the frontend |
 
-### Frontend (`frontend/.env` or Build Settings)
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `VITE_API_URL` | No | `http://127.0.0.1:8000` | Backend API base URL accessible from the user's browser. |
+**Important:** Never commit API keys, database credentials, or other secrets to GitHub.
 
----
+## 📌 Project Status
 
-## Recommended Production Deployment Architecture
+JobJazz is deployed and available for exploration. The project combines resume parsing, job matching, skill-gap analysis, and personalized learning recommendations in one application.
 
-JobJazz is architected as a decoupled SPA frontend, FastAPI backend, and PostgreSQL database.
+## 📄 License
 
-```
-+-------------------------------------------------------+
-|  Frontend: Vercel / Netlify / Cloudflare Pages        |
-|  - Continuous deployment from Git                     |
-|  - Build Command: npm run build                       |
-|  - Output Directory: dist                             |
-|  - Environment Variable: VITE_API_URL                 |
-+---------------------------+---------------------------+
-                            | HTTPS
-                            v
-+-------------------------------------------------------+
-|  Backend: Render / Railway / Fly.io / AWS App Runner  |
-|  - Python 3.12 Web Service or Docker container        |
-|  - Health Check Path: /health                         |
-|  - Startup: uvicorn app.main:app --host 0.0.0.0       |
-|  - Environment: DATABASE_URL, GEMINI_API_KEY,         |
-|                 CORS_ORIGINS                          |
-+---------------------------+---------------------------+
-                            | Managed Connection
-                            v
-+-------------------------------------------------------+
-|  Database: Managed PostgreSQL (Neon, Supabase, Render)|
-|  - Highly available PostgreSQL 15+                    |
-|  - Run: alembic upgrade head during release phase     |
-+-------------------------------------------------------+
-```
-
-### Production Deployment Steps
-
-1. **Database Setup (e.g., Neon / Supabase / Render PostgreSQL)**:
-   - Create a PostgreSQL database instance.
-   - Note the connection string (e.g. `postgresql://user:pass@host/dbname?sslmode=require`).
-
-2. **Backend Setup (e.g., Render Web Service)**:
-   - Connect the repository with root set to `backend` or use the root `Dockerfile` / `backend/Dockerfile`.
-   - Build command: `pip install -r requirements.txt`
-   - Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-   - Pre-Deploy command (Recommended): `alembic upgrade head` (Docker) or `alembic -c backend/alembic.ini upgrade head` (Native Python)
-   - Set Environment Variables:
-     - `DATABASE_URL`: Your managed PostgreSQL URL (e.g., Neon connection string).
-     - `CORS_ORIGINS`: Your frontend URL (e.g., `https://jobjazz.vercel.app`).
-     - `GEMINI_API_KEY`: Your Gemini API key.
-
-### Safe Production Database Migration Procedure
-
-A newly provisioned PostgreSQL database (such as Neon) is initially empty. If the backend serves requests before migrations are executed, PostgreSQL queries will fail with `relation "users" does not exist`.
-
-JobJazz supports fully automated container startup migrations designed specifically for **Render Free Tier** (where Shell and Pre-Deploy commands are disabled), as well as manual and paid-tier options:
-
-#### Method 1: Automated Container Startup Migration (Default for Render Free Tier)
-The JobJazz container image includes an automated runtime entrypoint (`entrypoint.sh`) that runs on container boot:
-1. It automatically executes `alembic upgrade head` inside `/app` against the runtime `DATABASE_URL` injected by Render.
-2. It proceeds to start Uvicorn only if the migration succeeds with exit code 0.
-3. It binds Uvicorn to Render's dynamically assigned `$PORT` (with fallback to 8000).
-4. In Render Dashboard -> Web Service -> **Settings**:
-   - **Docker Command**: Leave blank (runs `/app/entrypoint.sh` by default).
-
-#### Method 2: Render Pre-Deploy Command (Paid Render Plans)
-If running on a Render plan with Pre-Deploy support:
-1. In Render Dashboard -> Web Service -> **Settings** -> **Pre-Deploy Command**:
-   - If using **Docker** runtime: `alembic upgrade head`
-   - If using **Native Python** runtime with repo root: `alembic -c backend/alembic.ini upgrade head`
-   - If using **Native Python** with Root Directory set to `backend`: `alembic upgrade head`
-2. Save Changes.
-
-#### Method 3: Render One-Off Shell Execution (Paid Render Plans)
-If running on a plan with Shell access:
-1. In the Render Dashboard, open your **JobJazz Backend Web Service** -> **Shell** tab.
-2. Run:
-   ```bash
-   alembic upgrade head
-   ```
-3. Verify migration state:
-   ```bash
-   alembic current
-   ```
-   Output must show: `5b813be1bb86 (head)`
-
-#### Method 4: Secure Workstation CLI Execution (Operator Option)
-If applying migrations from an authorized workstation terminal:
-```bash
-# Set your production Neon DATABASE_URL temporarily in your shell
-DATABASE_URL="postgresql://<user>:<password>@<neon-host>/<dbname>?sslmode=require" alembic -c backend/alembic.ini upgrade head
-
-# Verify current revision
-DATABASE_URL="postgresql://<user>:<password>@<neon-host>/<dbname>?sslmode=require" alembic -c backend/alembic.ini current
-```
-
-3. **Frontend Setup (e.g., Vercel / Netlify)**:
-   - Connect repository with root set to `frontend`.
-   - Framework preset: Vite.
-   - Set Environment Variable:
-     - `VITE_API_URL`: Your deployed backend URL (e.g., `https://api.jobjazz.com`).
-   - Trigger deployment.
+This project is licensed under the MIT License.
 
 ---
 
-## Production Considerations & Caveats
-
-1. **Free-Tier Cold Starts**:
-   - If using free-tier providers (such as Render or Railway free hobby instances), instances spin down after inactivity. The first API request may take 30–50 seconds while the container initializes.
-2. **File Upload Limits & OCR**:
-   - Resumes and Job Description uploads are validated strictly for file signatures (`%PDF`, PNG, JPEG) and enforced to a **5 MB** ceiling with HTTP 413 Payload Too Large error handling.
-   - Document text extraction uses PyMuPDF first, falling back to Tesseract OCR for scanned pages.
-3. **Session Recovery**:
-   - Analysis results and roadmap state are referenced by an anonymous, non-sensitive UUID stored in `sessionStorage`. Browser refreshes recover dashboard state without persisting personal resume text in browser storage.
-4. **Deterministic Fallbacks**:
-   - If Gemini API quota limits are exceeded or the API key is not supplied, the platform falls back to deterministic recommendations and catalog-vetted learning resources without interruption.
-
----
-
-## License
-
-MIT License. Designed and developed for JobJazz.
+**Built with Python, React, and AI to help bring your career into tune.**
