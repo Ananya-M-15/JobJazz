@@ -169,11 +169,56 @@ JobJazz is architected as a decoupled SPA frontend, FastAPI backend, and Postgre
    - Connect the repository with root set to `backend` or use the root `Dockerfile` / `backend/Dockerfile`.
    - Build command: `pip install -r requirements.txt`
    - Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+   - Pre-Deploy command (Recommended): `alembic upgrade head` (Docker) or `alembic -c backend/alembic.ini upgrade head` (Native Python)
    - Set Environment Variables:
-     - `DATABASE_URL`: Your managed PostgreSQL URL.
+     - `DATABASE_URL`: Your managed PostgreSQL URL (e.g., Neon connection string).
      - `CORS_ORIGINS`: Your frontend URL (e.g., `https://jobjazz.vercel.app`).
      - `GEMINI_API_KEY`: Your Gemini API key.
-   - Run initial migrations: execute `alembic upgrade head` via release command or SSH console.
+
+### Safe Production Database Migration Procedure
+
+A newly provisioned PostgreSQL database (such as Neon) is initially empty. If the backend serves requests before migrations are executed, PostgreSQL queries will fail with `relation "users" does not exist`.
+
+JobJazz supports fully automated container startup migrations designed specifically for **Render Free Tier** (where Shell and Pre-Deploy commands are disabled), as well as manual and paid-tier options:
+
+#### Method 1: Automated Container Startup Migration (Default for Render Free Tier)
+The JobJazz container image includes an automated runtime entrypoint (`entrypoint.sh`) that runs on container boot:
+1. It automatically executes `alembic upgrade head` inside `/app` against the runtime `DATABASE_URL` injected by Render.
+2. It proceeds to start Uvicorn only if the migration succeeds with exit code 0.
+3. It binds Uvicorn to Render's dynamically assigned `$PORT` (with fallback to 8000).
+4. In Render Dashboard -> Web Service -> **Settings**:
+   - **Docker Command**: Leave blank (runs `/app/entrypoint.sh` by default).
+
+#### Method 2: Render Pre-Deploy Command (Paid Render Plans)
+If running on a Render plan with Pre-Deploy support:
+1. In Render Dashboard -> Web Service -> **Settings** -> **Pre-Deploy Command**:
+   - If using **Docker** runtime: `alembic upgrade head`
+   - If using **Native Python** runtime with repo root: `alembic -c backend/alembic.ini upgrade head`
+   - If using **Native Python** with Root Directory set to `backend`: `alembic upgrade head`
+2. Save Changes.
+
+#### Method 3: Render One-Off Shell Execution (Paid Render Plans)
+If running on a plan with Shell access:
+1. In the Render Dashboard, open your **JobJazz Backend Web Service** -> **Shell** tab.
+2. Run:
+   ```bash
+   alembic upgrade head
+   ```
+3. Verify migration state:
+   ```bash
+   alembic current
+   ```
+   Output must show: `5b813be1bb86 (head)`
+
+#### Method 4: Secure Workstation CLI Execution (Operator Option)
+If applying migrations from an authorized workstation terminal:
+```bash
+# Set your production Neon DATABASE_URL temporarily in your shell
+DATABASE_URL="postgresql://<user>:<password>@<neon-host>/<dbname>?sslmode=require" alembic -c backend/alembic.ini upgrade head
+
+# Verify current revision
+DATABASE_URL="postgresql://<user>:<password>@<neon-host>/<dbname>?sslmode=require" alembic -c backend/alembic.ini current
+```
 
 3. **Frontend Setup (e.g., Vercel / Netlify)**:
    - Connect repository with root set to `frontend`.
