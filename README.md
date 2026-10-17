@@ -137,4 +137,4 @@ This project is licensed under the MIT License.
 
 ---
 
-**Built with Python, React, and AI to help bring your career into tune.**
+**Built with ❤️ ..**
