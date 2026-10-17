@@ -1,7 +1,7 @@
 from datetime import datetime, UTC
 from enum import Enum
-from typing import Literal
-from pydantic import BaseModel, Field, HttpUrl, field_validator
+from typing import Literal, Any
+from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 
 
 class ResourceFormat(str, Enum):
@@ -50,6 +50,27 @@ class RoadmapPreferences(BaseModel):
     target_date: str | None = None
     resource_format: ResourceFormat = ResourceFormat.MIX
     budget: BudgetPreference = BudgetPreference.FREE
+
+    @model_validator(mode="before")
+    @classmethod
+    def handle_legacy_or_aliased_keys(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            # Shallow copy to avoid mutating external structures unexpectedly
+            data = dict(data)
+            # Map legacy or alternative keys to canonical schema fields to prevent silent preference loss
+            if "target_completion_date" in data and "target_date" not in data:
+                data["target_date"] = data.pop("target_completion_date")
+            if "preferred_format" in data and "resource_format" not in data:
+                data["resource_format"] = data.pop("preferred_format")
+            if "budget_preference" in data and "budget" not in data:
+                bp = data.pop("budget_preference")
+                if bp in ("free_only", "free"):
+                    data["budget"] = BudgetPreference.FREE
+                elif bp in ("free_and_paid", "all"):
+                    data["budget"] = BudgetPreference.ALL
+                else:
+                    data["budget"] = bp
+        return data
 
 
 class LearningResource(BaseModel):

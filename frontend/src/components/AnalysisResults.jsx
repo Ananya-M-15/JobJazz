@@ -2,8 +2,10 @@
 
 function AnalysisResults({ matchResult, skillGap, recommendations, onStartOver }) {
     const score = matchResult?.overall_score || 0
-    const recs = recommendations?.recommendations?.recommendations || []
-    const advice = recommendations?.recommendations?.overall_advice || ""
+    const recs = Array.isArray(recommendations?.recommendations)
+        ? recommendations.recommendations
+        : (recommendations?.recommendations?.recommendations || [])
+    const advice = recommendations?.overall_advice || recommendations?.recommendations?.overall_advice || ""
 
     return (
         <section className="relative z-10 mx-auto min-h-screen max-w-5xl px-6 py-28 sm:px-10 lg:px-12">

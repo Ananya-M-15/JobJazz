@@ -22,7 +22,7 @@ export default function DashboardLayout({ analysisId, matchResult, skillGap, rec
 
     return (
         <section className="relative z-10 mx-auto min-h-screen max-w-6xl px-4 py-24 md:py-32 sm:px-6 lg:px-8">
-            
+
             {/* Contextual Workflow Indicator */}
             <div className="mb-6 flex items-center gap-2 text-xs font-medium text-slate-500 overflow-x-auto whitespace-nowrap pb-2 no-scrollbar">
                 <span className="text-emerald-600 flex items-center gap-1 font-semibold">
@@ -73,8 +73,8 @@ export default function DashboardLayout({ analysisId, matchResult, skillGap, rec
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`whitespace-nowrap px-5 py-2.5 rounded-full text-sm font-semibold transition-colors ${
-                                activeTab === tab.id 
-                                    ? "bg-indigo-600 text-white shadow-sm" 
+                                activeTab === tab.id
+                                    ? "bg-indigo-600 text-white shadow-sm"
                                     : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:text-slate-900"
                             }`}
                             aria-current={activeTab === tab.id ? "page" : undefined}
@@ -91,8 +91,8 @@ export default function DashboardLayout({ analysisId, matchResult, skillGap, rec
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`text-left px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                                activeTab === tab.id 
-                                    ? "bg-indigo-50 text-indigo-700" 
+                                activeTab === tab.id
+                                    ? "bg-indigo-50 text-indigo-700"
                                     : "bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                             }`}
                             aria-current={activeTab === tab.id ? "page" : undefined}
@@ -105,25 +105,25 @@ export default function DashboardLayout({ analysisId, matchResult, skillGap, rec
                 {/* Main Content Area */}
                 <div className="flex-1 min-w-0">
                     {activeTab === "overview" && (
-                        <OverviewTab 
-                            matchResult={matchResult} 
-                            recommendations={recommendations} 
+                        <OverviewTab
+                            matchResult={matchResult}
+                            recommendations={recommendations}
                             jobProfile={jobProfile}
                             candidateProfile={candidateProfile}
                         />
                     )}
                     {activeTab === "skills" && (
-                        <SkillsTab 
-                            skillGap={skillGap} 
-                            matchResult={matchResult} 
+                        <SkillsTab
+                            skillGap={skillGap}
+                            matchResult={matchResult}
                             jobProfile={jobProfile}
                             candidateProfile={candidateProfile}
                         />
                     )}
                     {activeTab === "experience" && <ExperienceEducationTab matchResult={matchResult} skillGap={skillGap} />}
-                    {activeTab === "action" && <ActionPlanTab recommendations={recommendations} />}
+                    {activeTab === "action" && <ActionPlanTab recommendations={recommendations} matchResult={matchResult} />}
                     {activeTab === "roadmap" && (
-                        <RoadmapTab 
+                        <RoadmapTab
                             analysisId={analysisId}
                             matchResult={matchResult}
                             skillGap={skillGap}

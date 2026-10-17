@@ -1,14 +1,30 @@
-export default function ActionPlanTab({ recommendations }) {
-    const recs = recommendations?.recommendations?.recommendations || [];
+export default function ActionPlanTab({ recommendations, matchResult }) {
+    const recs = Array.isArray(recommendations?.recommendations)
+        ? recommendations.recommendations
+        : (recommendations?.recommendations?.recommendations || []);
+
+    const totalRequired = matchResult?.total_required_skills ?? 0;
+    const missingRequired = matchResult?.missing_required_skills || [];
+    const hasFullMatch = totalRequired > 0 && missingRequired.length === 0;
 
     if (!recs || recs.length === 0) {
         return (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 rounded-3xl border border-slate-200 bg-white p-12 text-center shadow-sm">
-                <div className="mx-auto w-16 h-16 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center mb-4">
-                    <span className="text-2xl">🎉</span>
+                <div className={`mx-auto w-16 h-16 rounded-full border flex items-center justify-center mb-4 ${
+                    hasFullMatch ? "bg-emerald-50 border-emerald-100" : "bg-slate-50 border-slate-100"
+                }`}>
+                    <span className="text-2xl">{hasFullMatch ? "🎉" : "📋"}</span>
                 </div>
-                <h2 className="text-2xl font-bold text-slate-900 mb-2">You're fully prepared!</h2>
-                <p className="text-slate-600">We don't have any specific skill development recommendations for this role.</p>
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                    {hasFullMatch ? "All Core Requirements Met!" : "No Priority Recommendations"}
+                </h2>
+                <p className="text-slate-600 max-w-md mx-auto">
+                    {hasFullMatch
+                        ? "Your profile aligns with all core technical requirements analyzed for this role. Explore the Learning Roadmap tab to review bonus technologies or portfolio projects."
+                        : totalRequired === 0
+                        ? "JobJazz could not identify enough explicit requirements in this posting to generate targeted skill recommendations."
+                        : "No specific skill development action items were generated for this comparison."}
+                </p>
             </div>
         );
     }
@@ -17,15 +33,15 @@ export default function ActionPlanTab({ recommendations }) {
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 relative">
             {/* Timeline line */}
             <div className="absolute left-8 top-8 bottom-8 w-px bg-slate-200 hidden md:block"></div>
-            
+
             <div className="space-y-6 relative z-10">
                 {recs.map((rec, idx) => {
                     const isHigh = rec.priority === 'High';
                     const isMed = rec.priority === 'Medium';
-                    const badgeClass = isHigh 
-                        ? 'bg-rose-50 text-rose-700 border-rose-200' 
-                        : isMed 
-                        ? 'bg-amber-50 text-amber-700 border-amber-200' 
+                    const badgeClass = isHigh
+                        ? 'bg-rose-50 text-rose-700 border-rose-200'
+                        : isMed
+                        ? 'bg-amber-50 text-amber-700 border-amber-200'
                         : 'bg-indigo-50 text-indigo-700 border-indigo-200';
                     const stepNumberClass = isHigh ? 'bg-rose-100 text-rose-700 border-white' : 'bg-slate-100 text-slate-600 border-white';
 
@@ -37,7 +53,7 @@ export default function ActionPlanTab({ recommendations }) {
                                     {idx + 1}
                                 </div>
                             </div>
-                            
+
                             {/* Content Card */}
                             <div className="flex-1 rounded-3xl border border-slate-200 bg-white hover:shadow-md p-6 md:p-8 transition duration-300 shadow-sm">
                                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-5">
@@ -54,7 +70,7 @@ export default function ActionPlanTab({ recommendations }) {
                                         {rec.priority} Priority
                                     </span>
                                 </div>
-                                
+
                                 <div className="space-y-4">
                                     <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
                                         <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-2">
@@ -63,7 +79,7 @@ export default function ActionPlanTab({ recommendations }) {
                                         </h4>
                                         <p className="text-sm md:text-base text-slate-700 leading-relaxed">{rec.reason}</p>
                                     </div>
-                                    
+
                                     <div className="bg-indigo-50/50 rounded-2xl p-5 border border-indigo-100 relative overflow-hidden">
                                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500 rounded-l-2xl"></div>
                                         <h4 className="text-xs font-bold uppercase tracking-widest text-indigo-700 mb-2 flex items-center gap-2 pl-3">

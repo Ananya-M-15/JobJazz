@@ -2,9 +2,9 @@ import CircularScore from "./CircularScore";
 
 export default function OverviewTab({ matchResult, recommendations }) {
     const score = matchResult?.overall_score ?? 0;
-    const advice = recommendations?.recommendations?.overall_advice || "";
+    const advice = recommendations?.overall_advice || recommendations?.recommendations?.overall_advice || "";
     const scoreBreakdown = matchResult?.score_breakdown || "";
-    
+
     const matchedRequired = matchResult?.matched_required_skills || [];
     const missingRequired = matchResult?.missing_required_skills || [];
     const matchedPreferred = matchResult?.matched_preferred_skills || [];
@@ -12,8 +12,10 @@ export default function OverviewTab({ matchResult, recommendations }) {
 
     const totalRequired = matchResult?.total_required_skills ?? (matchedRequired.length + missingRequired.length);
     const totalPreferred = matchResult?.total_preferred_skills ?? (matchedPreferred.length + missingPreferred.length);
-    
-    const allRecs = recommendations?.recommendations?.recommendations || [];
+
+    const allRecs = Array.isArray(recommendations?.recommendations)
+        ? recommendations.recommendations
+        : (recommendations?.recommendations?.recommendations || []);
     // Prioritize High priority recommendations first, then Medium/others
     const topOpportunities = [...allRecs].sort((a, b) => {
         if (a.priority === "High" && b.priority !== "High") return -1;
@@ -23,7 +25,7 @@ export default function OverviewTab({ matchResult, recommendations }) {
 
     return (
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 space-y-8">
-            
+
             {/* Main Score & Assessment Card */}
             <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm">
                 <div className="flex flex-col sm:flex-row gap-6 sm:gap-8 items-center sm:items-start">
@@ -66,8 +68,8 @@ export default function OverviewTab({ matchResult, recommendations }) {
                                 </span>
                             )}
                             <span className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1 text-xs font-semibold ${
-                                matchResult?.experience_status === 'met' 
-                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
+                                matchResult?.experience_status === 'met'
+                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
                                     : matchResult?.experience_status === 'gap'
                                     ? 'bg-rose-50 border-rose-200 text-rose-700'
                                     : 'bg-slate-50 border-slate-200 text-slate-600'
@@ -81,7 +83,7 @@ export default function OverviewTab({ matchResult, recommendations }) {
 
             {/* Two-Column Grid: Strengths/Focus Areas & Highest-Impact Opportunities */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                
+
                 {/* Left Column: Strengths & Focus Areas */}
                 <div className="space-y-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -111,13 +113,13 @@ export default function OverviewTab({ matchResult, recommendations }) {
                                 </ul>
                             ) : (
                                 <p className="text-sm text-slate-500 italic">
-                                    {totalRequired > 0 
+                                    {totalRequired > 0
                                         ? "No direct required skill matches found."
                                         : "No explicit required skills detected in posting."}
                                 </p>
                             )}
                         </div>
-                        
+
                         {/* Critical Missing Requirements */}
                         <div className="rounded-2xl border border-slate-200 bg-rose-50/40 p-5">
                             <div className="flex items-center justify-between mb-3">
@@ -175,7 +177,7 @@ export default function OverviewTab({ matchResult, recommendations }) {
                         </div>
                     )}
                 </div>
-                
+
                 {/* Right Column: Top Actionable Opportunities */}
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
@@ -188,7 +190,7 @@ export default function OverviewTab({ matchResult, recommendations }) {
                             </span>
                         )}
                     </div>
-                    
+
                     {topOpportunities.length > 0 ? (
                         <div className="space-y-3">
                             {topOpportunities.map((opp, idx) => {
@@ -205,8 +207,8 @@ export default function OverviewTab({ matchResult, recommendations }) {
                                                         {opp.skill || opp.title || "Target Area"}
                                                     </h4>
                                                     <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border shrink-0 ${
-                                                        isHigh 
-                                                            ? 'bg-rose-50 text-rose-700 border-rose-200' 
+                                                        isHigh
+                                                            ? 'bg-rose-50 text-rose-700 border-rose-200'
                                                             : 'bg-amber-50 text-amber-700 border-amber-200'
                                                     }`}>
                                                         {opp.priority} Priority

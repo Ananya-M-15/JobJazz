@@ -35,9 +35,9 @@ export default function WorkflowFlow() {
     ]
 
     return (
-        <section className="relative z-10 w-full py-24 sm:py-32 bg-white">
+        <section className="relative z-10 w-full py-24 sm:py-32 bg-white scroll-mt-20" id="workflow">
             <div className="mx-auto max-w-7xl px-6 lg:px-8">
-                
+
                 <div className="mx-auto max-w-2xl text-center">
                     <h2 className="text-3xl font-bold tracking-tight text-[var(--jj-navy)] sm:text-4xl">
                         From resume to decision.
@@ -51,12 +51,12 @@ export default function WorkflowFlow() {
                     <div className="flex flex-col lg:flex-row items-center justify-between gap-4 lg:gap-2">
                         {stages.map((stage, i) => (
                             <div key={stage.title} className="flex flex-col lg:flex-row items-center w-full lg:w-auto lg:flex-1">
-                                
+
                                 {/* Stage Card */}
                                 <div className="group relative w-full bg-white border border-[var(--jj-border)] rounded-2xl p-5 xl:p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_10px_40px_-10px_rgba(49,92,246,0.2)] hover:border-[var(--jj-primary-blue)] hover:-translate-y-2 transition-all duration-300 overflow-hidden">
                                     {/* Top accent line */}
                                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[var(--jj-pale-blue)] to-[var(--jj-border)] group-hover:from-[var(--jj-primary-blue)] group-hover:to-[var(--jj-indigo)] transition-all duration-300"></div>
-                                    
+
                                     <div className="flex items-center justify-between mb-5 mt-2">
                                         <span className="text-xs font-bold text-slate-300 font-mono group-hover:text-[var(--jj-primary-blue)] transition-colors">{stage.num}</span>
                                         <div className="text-slate-400 group-hover:text-[var(--jj-primary-blue)] transition-colors transform group-hover:scale-110">

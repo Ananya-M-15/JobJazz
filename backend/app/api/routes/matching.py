@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -82,4 +83,72 @@ async def analyze_match(
     return {
         "analysis_id": str(analysis.id),
         "match_result": result.model_dump(),
+    }
+
+
+@router.get("/analysis/{analysis_id}")
+async def get_analysis_by_id(
+    analysis_id: str,
+    db: Session = Depends(get_db),
+):
+    try:
+        analysis_uuid = uuid.UUID(analysis_id)
+    except (ValueError, TypeError, AttributeError):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid analysis ID format. Expected a valid UUID.",
+        )
+
+    analysis = db.query(Analysis).filter(
+        Analysis.id == analysis_uuid
+    ).first()
+
+    if not analysis:
+        raise HTTPException(
+            status_code=404,
+            detail="Analysis record not found.",
+        )
+
+    resume = analysis.resume
+    job = analysis.job_description
+
+    candidate_profile = resume.profile_data if resume else None
+    job_profile = job.profile_data if job else None
+
+    skill_gap_data = None
+    if analysis.skill_gap:
+        skill_gap_data = {
+            "strengths": analysis.skill_gap.strengths,
+            "critical_gaps": analysis.skill_gap.critical_gaps,
+            "preferred_gaps": analysis.skill_gap.preferred_gaps,
+            "experience_gap": analysis.skill_gap.experience_gap,
+            "education_gap": analysis.skill_gap.education_gap,
+        }
+
+    recommendations_data = None
+    if analysis.recommendations:
+        recommendations_data = {
+            "source": analysis.recommendations[0].source if analysis.recommendations else "deterministic",
+            "recommendations": [
+                {
+                    "skill": r.skill,
+                    "priority": r.priority,
+                    "reason": r.reason,
+                    "action": r.action,
+                }
+                for r in analysis.recommendations
+            ],
+            "overall_advice": "",
+        }
+
+    return {
+        "analysis_id": str(analysis.id),
+        "resume_id": str(analysis.resume_id) if analysis.resume_id else None,
+        "job_description_id": str(analysis.job_description_id) if analysis.job_description_id else None,
+        "overall_score": analysis.overall_score,
+        "match_result": analysis.match_data,
+        "candidate_profile": candidate_profile,
+        "job_profile": job_profile,
+        "skill_gap": skill_gap_data,
+        "recommendations": recommendations_data,
     }

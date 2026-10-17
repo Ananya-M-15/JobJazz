@@ -23,6 +23,7 @@ from app.schemas.roadmap import (
     RoadmapStep,
     RoadmapSummary,
     RoadmapStage,
+    StepStatus,
     GapType,
     ProficiencyLevel,
 )
@@ -90,7 +91,7 @@ def generate_deterministic_roadmap(
     """
     critical_skills = list(skill_gap.critical_gaps)
     preferred_skills = list(skill_gap.preferred_gaps)
-    
+
     # If no gaps at all, select 1-2 key requirements to polish and showcase
     if not critical_skills and not preferred_skills:
         target_skills = job.required_skills[:2] if job.required_skills else ["Software Engineering Principles"]
@@ -597,3 +598,92 @@ def _parse_and_validate_gemini_roadmap(
         created_at=now_iso,
         updated_at=now_iso,
     )
+
+
+def merge_roadmap_progress(
+    new_roadmap: RoadmapResult,
+    existing_modules_data: list[dict] | None,
+) -> RoadmapResult:
+    """
+    Preserve completed status, completed_at timestamps, and user notes
+    for steps that are demonstrably equivalent across roadmap regenerations.
+    """
+    if not existing_modules_data or not new_roadmap.modules:
+        return new_roadmap
+
+    # Collect existing steps with their completion metadata
+    existing_steps: list[dict] = []
+    for mod in existing_modules_data:
+        for s in mod.get("steps", []):
+            if isinstance(s, dict):
+                existing_steps.append(s)
+
+    if not existing_steps:
+        return new_roadmap
+
+    # Track which old steps have been matched to avoid duplicated preservation
+    matched_old_indices: set[int] = set()
+
+    for new_mod in new_roadmap.modules:
+        for new_step in new_mod.steps:
+            new_skill = (new_step.skill or "").strip().lower()
+            new_stage = (
+                new_step.stage.value.lower()
+                if hasattr(new_step.stage, "value")
+                else str(new_step.stage).lower()
+            )
+            new_title = (new_step.title or "").strip().lower()
+
+            best_match_idx = None
+            best_score = -1
+
+            for idx, old_step in enumerate(existing_steps):
+                if idx in matched_old_indices:
+                    continue
+
+                old_skill = str(old_step.get("skill", "")).strip().lower()
+                old_stage = str(old_step.get("stage", "")).strip().lower()
+                old_title = str(old_step.get("title", "")).strip().lower()
+
+                # Primary equivalence requirement: same target skill and pedagogical stage
+                if old_skill == new_skill and old_stage == new_stage:
+                    score = 10
+                    # Title alignment boosts confidence
+                    if old_title == new_title:
+                        score += 5
+                    elif any(word in old_title for word in new_title.split() if len(word) > 3):
+                        score += 2
+
+                    if score > best_score:
+                        best_score = score
+                        best_match_idx = idx
+
+            if best_match_idx is not None and best_score >= 10:
+                old_match = existing_steps[best_match_idx]
+                matched_old_indices.add(best_match_idx)
+
+                old_status = old_match.get("status")
+                if old_status == StepStatus.COMPLETED.value or old_match.get("completed") is True:
+                    new_step.status = StepStatus.COMPLETED
+                    new_step.completed_at = old_match.get("completed_at") or datetime.now(UTC).isoformat()
+                elif old_status == StepStatus.IN_PROGRESS.value:
+                    new_step.status = StepStatus.IN_PROGRESS
+                    new_step.completed_at = None
+
+                if old_match.get("user_notes"):
+                    new_step.user_notes = old_match.get("user_notes")
+
+    # Recalculate summary metrics from updated steps
+    total_steps = sum(len(m.steps) for m in new_roadmap.modules)
+    completed_steps = sum(
+        1 for m in new_roadmap.modules
+        for s in m.steps
+        if s.status == StepStatus.COMPLETED
+    )
+    progress_pct = round((completed_steps / total_steps * 100), 1) if total_steps > 0 else 0.0
+
+    new_roadmap.summary.total_steps = total_steps
+    new_roadmap.summary.completed_steps = completed_steps
+    new_roadmap.summary.progress_percentage = progress_pct
+
+    return new_roadmap

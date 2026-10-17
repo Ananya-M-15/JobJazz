@@ -18,9 +18,11 @@ import {
     Check,
     Info,
     ChevronRight,
-    TrendingUp
+    TrendingUp,
+    FileText,
+    Download,
 } from "lucide-react";
-import { generateRoadmap, getRoadmap, updateRoadmapStep } from "../../api/jobjazzApi";
+import { generateRoadmap, getRoadmap, updateRoadmapStep, downloadRoadmapPdf } from "../../api/jobjazzApi";
 
 export default function RoadmapTab({
     analysisId,
@@ -32,14 +34,33 @@ export default function RoadmapTab({
     const [updatingStepId, setUpdatingStepId] = useState(null);
     const [viewMode, setViewMode] = useState("curriculum"); // "curriculum" | "schedule"
     const [showConfig, setShowConfig] = useState(false);
+    const [stepFeedback, setStepFeedback] = useState(null);
+    const [editingNotesStepId, setEditingNotesStepId] = useState(null);
+    const [noteDraft, setNoteDraft] = useState("");
+    const [savingNoteStepId, setSavingNoteStepId] = useState(null);
+    const [exportingPdf, setExportingPdf] = useState(false);
+    const [exportError, setExportError] = useState(null);
+
+    const handleDownloadPdf = async () => {
+        if (!analysisId) return;
+        setExportingPdf(true);
+        setExportError(null);
+        try {
+            await downloadRoadmapPdf(analysisId);
+        } catch (err) {
+            setExportError(err instanceof Error ? err.message : "Failed to export roadmap PDF.");
+        } finally {
+            setExportingPdf(false);
+        }
+    };
 
     // Roadmap Generation Preferences
     const [preferences, setPreferences] = useState({
         proficiency: "intermediate",
         hours_per_week: 10,
-        target_completion_date: "",
-        preferred_format: "mix",
-        budget_preference: "free_only",
+        target_date: "",
+        resource_format: "mix",
+        budget: "free",
     });
 
     // Load initial roadmap on mount if analysisId is present
@@ -58,7 +79,9 @@ export default function RoadmapTab({
                         setPreferences((prev) => ({
                             ...prev,
                             ...data.preferences,
-                            target_completion_date: data.preferences.target_completion_date || "",
+                            target_date: data.preferences.target_date || data.preferences.target_completion_date || "",
+                            resource_format: data.preferences.resource_format || data.preferences.preferred_format || "mix",
+                            budget: data.preferences.budget === "all" || data.preferences.budget_preference === "free_and_paid" ? "all" : "free",
                         }));
                     }
                 }
@@ -96,9 +119,9 @@ export default function RoadmapTab({
                 preferences: {
                     proficiency: preferences.proficiency,
                     hours_per_week: Number(preferences.hours_per_week) || 10,
-                    target_completion_date: preferences.target_completion_date || null,
-                    preferred_format: preferences.preferred_format,
-                    budget_preference: preferences.budget_preference,
+                    target_date: preferences.target_date || null,
+                    resource_format: preferences.resource_format,
+                    budget: preferences.budget,
                 },
             };
 
@@ -122,12 +145,62 @@ export default function RoadmapTab({
         const currentCompleted = isStepDone(step);
         setUpdatingStepId(stepId);
         try {
+            setStepFeedback(null);
             const updatedRoadmap = await updateRoadmapStep(analysisId, stepId, !currentCompleted);
             setRoadmap(updatedRoadmap);
+            setStepFeedback({
+                type: "success",
+                message: !currentCompleted ? "Step marked complete!" : "Step marked incomplete.",
+                stepId,
+            });
+            setTimeout(() => setStepFeedback(null), 3000);
         } catch (err) {
             console.error("Failed to update step:", err);
+            setStepFeedback({
+                type: "error",
+                message: err instanceof Error ? err.message : "Failed to update step progress.",
+                stepId,
+            });
+            setTimeout(() => setStepFeedback(null), 5000);
         } finally {
             setUpdatingStepId(null);
+        }
+    };
+
+    // Notes editing handlers
+    const handleStartEditNote = (step) => {
+        setEditingNotesStepId(step.id);
+        setNoteDraft(step.user_notes || "");
+    };
+
+    const handleSaveNote = async (step) => {
+        if (!analysisId || savingNoteStepId) return;
+        setSavingNoteStepId(step.id);
+        try {
+            const updatedRoadmap = await updateRoadmapStep(
+                analysisId,
+                step.id,
+                isStepDone(step),
+                noteDraft.trim()
+            );
+            setRoadmap(updatedRoadmap);
+            setEditingNotesStepId(null);
+            setStepFeedback({
+                type: "success",
+                message: "Note saved successfully!",
+                stepId: step.id,
+            });
+            setTimeout(() => setStepFeedback(null), 3000);
+        } catch (err) {
+            console.error("Failed to save note:", err);
+            setStepFeedback({
+                type: "error",
+                message: err instanceof Error ? err.message : "Failed to save note.",
+                stepId: step.id,
+            });
+            setTimeout(() => setStepFeedback(null), 5000);
+        } finally {
+            setSavingNoteStepId(null);
         }
     };
 
@@ -311,8 +384,8 @@ export default function RoadmapTab({
                                     Preferred Resource Style
                                 </label>
                                 <select
-                                    value={preferences.preferred_format}
-                                    onChange={(e) => setPreferences({ ...preferences, preferred_format: e.target.value })}
+                                    value={preferences.resource_format}
+                                    onChange={(e) => setPreferences({ ...preferences, resource_format: e.target.value })}
                                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 focus:bg-white focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all font-medium"
                                 >
                                     <option value="mix">Balanced Mix (Docs, Practice & Projects)</option>
@@ -329,12 +402,12 @@ export default function RoadmapTab({
                                     Budget Preference
                                 </label>
                                 <select
-                                    value={preferences.budget_preference}
-                                    onChange={(e) => setPreferences({ ...preferences, budget_preference: e.target.value })}
+                                    value={preferences.budget}
+                                    onChange={(e) => setPreferences({ ...preferences, budget: e.target.value })}
                                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 focus:bg-white focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all font-medium"
                                 >
-                                    <option value="free_only">100% Free Resources Only</option>
-                                    <option value="free_and_paid">Free and Paid (All Verified Providers)</option>
+                                    <option value="free">100% Free Resources Only</option>
+                                    <option value="all">Free and Paid (All Verified Providers)</option>
                                 </select>
                             </div>
 
@@ -345,9 +418,9 @@ export default function RoadmapTab({
                                 </label>
                                 <input
                                     type="date"
-                                    value={preferences.target_completion_date}
+                                    value={preferences.target_date}
                                     min={new Date().toISOString().split("T")[0]}
-                                    onChange={(e) => setPreferences({ ...preferences, target_completion_date: e.target.value })}
+                                    onChange={(e) => setPreferences({ ...preferences, target_date: e.target.value })}
                                     className="w-full max-w-sm rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 focus:bg-white focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all font-medium"
                                 />
                             </div>
@@ -389,7 +462,7 @@ export default function RoadmapTab({
                                 {roadmap.source === "ai" ? "AI Grounded Curriculum" : "Vetted Deterministic Curriculum"}
                             </span>
                             <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200">
-                                {roadmap.preferences?.budget_preference === "free_only" ? "100% Free Resources" : "Free & Paid Resources"}
+                                {roadmap.preferences?.budget === "all" ? "Free & Paid Resources" : "100% Free Resources"}
                             </span>
                         </div>
                         <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">
@@ -403,6 +476,16 @@ export default function RoadmapTab({
                     {/* Action Controls */}
                     <div className="flex items-center gap-3 self-start lg:self-center">
                         <button
+                            type="button"
+                            onClick={handleDownloadPdf}
+                            disabled={exportingPdf}
+                            className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/70 px-4 py-2.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors shadow-xs disabled:opacity-50"
+                        >
+                            <Download className="w-3.5 h-3.5 text-indigo-600" />
+                            {exportingPdf ? "Exporting PDF..." : "Download Roadmap PDF"}
+                        </button>
+                        <button
+                            type="button"
                             onClick={() => setShowConfig(!showConfig)}
                             className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-xs"
                         >
@@ -411,6 +494,12 @@ export default function RoadmapTab({
                         </button>
                     </div>
                 </div>
+
+                {exportError && (
+                    <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-medium text-rose-700">
+                        {exportError}
+                    </div>
+                )}
 
                 {/* Collapsible Preferences Panel */}
                 {showConfig && (
@@ -446,8 +535,8 @@ export default function RoadmapTab({
                             <div>
                                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Resource Format</label>
                                 <select
-                                    value={preferences.preferred_format}
-                                    onChange={(e) => setPreferences({ ...preferences, preferred_format: e.target.value })}
+                                    value={preferences.resource_format}
+                                    onChange={(e) => setPreferences({ ...preferences, resource_format: e.target.value })}
                                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 font-medium"
                                 >
                                     <option value="mix">Balanced Mix</option>
@@ -605,6 +694,25 @@ export default function RoadmapTab({
             {/* View 1: Module Curriculum View */}
             {viewMode === "curriculum" && (
                 <div className="space-y-10">
+                    {stepFeedback && (
+                        <div className={`p-3.5 rounded-2xl border text-xs font-semibold flex items-center justify-between transition-all ${
+                            stepFeedback.type === "error"
+                                ? "bg-rose-50 border-rose-200 text-rose-800"
+                                : "bg-emerald-50 border-emerald-200 text-emerald-800"
+                        }`}>
+                            <div className="flex items-center gap-2">
+                                <span>{stepFeedback.type === "error" ? "⚠️" : "✓"}</span>
+                                <span>{stepFeedback.message}</span>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setStepFeedback(null)}
+                                className="text-slate-400 hover:text-slate-600 text-xs font-bold px-1"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    )}
                     {modules?.map((mod, modIdx) => {
                         const modCompleted = mod.steps.filter(isStepDone).length;
                         const modTotal = mod.steps.length;
@@ -786,6 +894,59 @@ export default function RoadmapTab({
                                                                 </div>
                                                             </div>
                                                         )}
+
+                                                        {/* Personal Study Notes */}
+                                                        <div className="mt-3 pt-2.5 border-t border-slate-100">
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                                                                    <FileText className="w-3.5 h-3.5 text-slate-400" />
+                                                                    Study Notes
+                                                                </span>
+                                                                {editingNotesStepId !== step.id && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleStartEditNote(step)}
+                                                                        className="text-2xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+                                                                        aria-label={step.user_notes ? "Edit note" : "Add note"}
+                                                                    >
+                                                                        {step.user_notes ? "Edit Note" : "+ Add Note"}
+                                                                    </button>
+                                                                )}
+                                                            </div>
+
+                                                            {editingNotesStepId === step.id ? (
+                                                                <div className="mt-2 space-y-2">
+                                                                    <textarea
+                                                                        value={noteDraft}
+                                                                        onChange={(e) => setNoteDraft(e.target.value)}
+                                                                        placeholder="Write your notes, key takeaways, code repositories, or reflections..."
+                                                                        rows={2}
+                                                                        className="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                                                                    />
+                                                                    <div className="flex items-center justify-end gap-2">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => setEditingNotesStepId(null)}
+                                                                            className="text-2xs px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium"
+                                                                        >
+                                                                            Cancel
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            disabled={savingNoteStepId === step.id}
+                                                                            onClick={() => handleSaveNote(step)}
+                                                                            className="text-2xs px-3 py-1 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-semibold disabled:opacity-50"
+                                                                        >
+                                                                            {savingNoteStepId === step.id ? "Saving..." : "Save Note"}
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            ) : step.user_notes ? (
+                                                                <div className="mt-1.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700">
+                                                                    <span className="font-medium text-slate-800">Note: </span>{step.user_notes}
+                                                                </div>
+                                                            ) : null}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>

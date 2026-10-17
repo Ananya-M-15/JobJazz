@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -17,12 +18,20 @@ app = FastAPI(
 )
 
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+# Configurable CORS origins for production and local development
+cors_env = os.getenv("CORS_ORIGINS", "").strip()
+if cors_env:
+    allowed_origins = [origin.strip() for origin in cors_env.split(",") if origin.strip()]
+else:
+    allowed_origins = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-    ],
+        "http://localhost:4173",
+    ]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -35,6 +44,14 @@ def root():
         "message": "Welcome to JobJazz API",
         "status": "running",
         "version": "0.1.0",
+    }
+
+
+@app.get("/health")
+def root_health():
+    """Root health endpoint for cloud load balancers and deployment probes."""
+    return {
+        "status": "healthy"
     }
 
 

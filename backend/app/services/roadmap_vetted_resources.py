@@ -201,7 +201,7 @@ VETTED_CATALOGUE: dict[str, list[dict]] = {
         {
             "title": "Scikit-Learn Machine Learning in Python",
             "provider": "Inria / Scikit-learn Consortium",
-            "url": "https://scikit-learn.org/stable/tutorial/index.html",
+            "url": "https://scikit-learn.org/stable/tutorial/",
             "resource_type": "documentation",
             "pricing": "free",
             "difficulty": "intermediate",

@@ -93,5 +93,6 @@ async def generate_recommendation_response(
 
     return {
         "source": source,
-        "recommendations": result.model_dump(),
+        "recommendations": [r.model_dump() for r in result.recommendations],
+        "overall_advice": result.overall_advice,
     }

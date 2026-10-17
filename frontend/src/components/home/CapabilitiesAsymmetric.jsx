@@ -29,9 +29,9 @@ export default function CapabilitiesAsymmetric() {
     ]
 
     return (
-        <section className="relative z-10 w-full py-16 sm:py-20 lg:py-24 bg-[var(--jj-background)] overflow-hidden">
+        <section className="relative z-10 w-full py-16 sm:py-20 lg:py-24 bg-[var(--jj-background)] overflow-hidden scroll-mt-20" id="insights">
             <div className="mx-auto max-w-7xl px-6 lg:px-8">
-                
+
                 <div className="mx-auto max-w-2xl text-center mb-12 sm:mb-16">
                     <h2 className="text-3xl font-bold tracking-tight text-[var(--jj-navy)] sm:text-4xl">
                         A resume is more than a list of skills.
@@ -52,7 +52,7 @@ export default function CapabilitiesAsymmetric() {
 
                             {/* Glow accent */}
                             <div className="absolute top-0 right-0 w-28 h-28 bg-[var(--jj-pale-blue)] rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10"></div>
-                            
+
                             <div>
                                 <div className="flex justify-between items-start mb-5">
                                     <div className="w-11 h-11 rounded-xl bg-[var(--jj-background)] flex items-center justify-center group-hover:bg-gradient-to-br group-hover:from-[var(--jj-primary-blue)] group-hover:to-[var(--jj-indigo)] group-hover:shadow-[0_4px_15px_rgba(49,92,246,0.4)] transition-all duration-300">

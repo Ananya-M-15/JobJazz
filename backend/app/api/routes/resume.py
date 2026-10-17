@@ -6,6 +6,7 @@ from app.database.models import User, Resume
 
 from app.services.document_extractor import extract_document_text
 from app.services.resume_parser import parse_resume_text
+from app.services.document_classifier import classify_document
 
 router = APIRouter(
     prefix="/resume",
@@ -118,14 +119,34 @@ async def extract_resume(
 
     extracted_text = extraction["text"]
 
-    if not extracted_text:
+    if not extracted_text or len(extracted_text.strip()) < 40:
         raise HTTPException(
             status_code=422,
-            detail="No readable text was found in the uploaded document.",
+            detail="No readable text was found in the uploaded document. Please upload a clear resume file.",
         )
 
     # --------------------------------------------------
-    # 7. Parse resume information
+    # 7. Validate document purpose (ensure it is a resume, not JD or unrelated)
+    # --------------------------------------------------
+    classification = classify_document(extracted_text)
+    if classification["document_type"] == "job_description":
+        raise HTTPException(
+            status_code=422,
+            detail="This document appears to be a Job Description rather than a candidate resume. Please upload your personal resume or CV in this step.",
+        )
+    elif classification["document_type"] == "unrelated":
+        raise HTTPException(
+            status_code=422,
+            detail="The uploaded file does not appear to be a candidate resume or career document. Please upload a standard resume containing your experience, skills, and education.",
+        )
+    elif classification["document_type"] == "ambiguous":
+        raise HTTPException(
+            status_code=422,
+            detail="The uploaded document could not be clearly verified as a candidate resume. Please upload a clear resume with your contact details, work history, and skills.",
+        )
+
+    # --------------------------------------------------
+    # 8. Parse resume information
     # --------------------------------------------------
 
     try:
@@ -135,7 +156,7 @@ async def extract_resume(
             status_code=500,
             detail="Unable to analyze the extracted resume content.",
         )
-    
+
         # --------------------------------------------------
     # 8. Save resume to database
     # --------------------------------------------------

@@ -1,5 +1,6 @@
 from datetime import datetime, UTC
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.database.database import get_db
@@ -15,7 +16,11 @@ from app.schemas.roadmap import (
     StepUpdateRequest,
     StepStatus,
 )
-from app.services.roadmap_generator import generate_personalized_roadmap
+from app.services.roadmap_generator import (
+    generate_personalized_roadmap,
+    merge_roadmap_progress,
+)
+from app.services.roadmap_pdf_service import generate_roadmap_pdf
 
 router = APIRouter(
     prefix="/roadmap",
@@ -112,6 +117,10 @@ async def generate_roadmap_endpoint(
     now_utc = datetime.now(UTC)
 
     if db_roadmap:
+        # Preserve completed status, timestamps, and user notes for demonstrably equivalent steps
+        if db_roadmap.modules:
+            roadmap_result = merge_roadmap_progress(roadmap_result, db_roadmap.modules)
+
         db_roadmap.preferences = roadmap_result.preferences.model_dump()
         db_roadmap.summary = roadmap_result.summary.model_dump()
         db_roadmap.modules = [m.model_dump() for m in roadmap_result.modules]
@@ -287,3 +296,48 @@ async def get_roadmap_progress_endpoint(
         "progress_percentage": progress_pct,
         "completed_skills": list(completed_skills),
     }
+
+
+@router.get("/{analysis_id}/pdf")
+async def download_roadmap_pdf_endpoint(
+    analysis_id: str,
+    db: Session = Depends(get_db),
+):
+    db_roadmap = db.query(Roadmap).filter(
+        Roadmap.analysis_id == analysis_id
+    ).first()
+
+    if not db_roadmap:
+        raise HTTPException(
+            status_code=404,
+            detail="Roadmap not found for this analysis.",
+        )
+
+    roadmap_dict = {
+        "analysis_id": str(db_roadmap.analysis_id),
+        "preferences": db_roadmap.preferences or {},
+        "summary": db_roadmap.summary or {},
+        "modules": db_roadmap.modules or [],
+        "schedule": db_roadmap.schedule or {},
+    }
+
+    try:
+        pdf_bytes = generate_roadmap_pdf(roadmap_dict)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unable to generate roadmap PDF: {str(exc)}",
+        )
+
+    target_role = (db_roadmap.summary or {}).get("target_role", "Roadmap")
+    safe_role = "".join(c for c in target_role if c.isalnum() or c in ("-", "_")).strip() or "Career"
+    filename = f"JobJazz_{safe_role}_Roadmap.pdf"
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-cache",
+        },
+    )

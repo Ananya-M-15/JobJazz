@@ -6,6 +6,7 @@ from app.database.database import get_db
 from app.database.models import User, JobDescription
 from app.services.job_profile_parser import parse_job_description
 from app.services.document_extractor import extract_document_text
+from app.services.document_classifier import classify_document
 
 router = APIRouter(
     prefix="/job-description",
@@ -56,7 +57,7 @@ async def analyze_job_description(
         )
 
     profile = parse_job_description(request.text)
-    
+
     # Validation logic
     text_length = len(request.text.strip())
     if text_length < 100:
@@ -64,12 +65,32 @@ async def analyze_job_description(
             status_code=422,
             detail="We couldn't read enough text from this. Try pasting a more complete job description."
         )
-        
+
+    classification = classify_document(request.text)
+    if classification["document_type"] == "resume":
+        raise HTTPException(
+            status_code=422,
+            detail="This document appears to be a candidate resume rather than a job description. Please paste the job description or role requirements you wish to match against.",
+        )
+    elif classification["document_type"] == "unrelated":
+        raise HTTPException(
+            status_code=422,
+            detail="This doesn't look like a job description. We found text, but couldn't identify enough job-related requirements. Please paste the actual job posting.",
+        )
+    elif classification["document_type"] == "ambiguous":
+        has_meaningful_title = profile.job_title and profile.job_title != "Untitled Job Description"
+        total_skills = len(profile.required_skills) + len(profile.preferred_skills)
+        if not has_meaningful_title and total_skills < 2:
+            raise HTTPException(
+                status_code=422,
+                detail="The provided text could not be clearly verified as a job description. Please paste a standard job description with role requirements and responsibilities.",
+            )
+
     has_meaningful_title = profile.job_title and profile.job_title != "Untitled Job Description"
     total_skills = len(profile.required_skills) + len(profile.preferred_skills)
     has_experience = bool(profile.experience_requirement)
     has_education = len(profile.education_requirements) > 0
-    
+
     if not has_meaningful_title and total_skills < 2 and not has_experience and not has_education:
         raise HTTPException(
             status_code=422,
@@ -166,12 +187,32 @@ async def analyze_job_description_pdf(
             status_code=422,
             detail="We couldn't read enough text from this PDF. Try a text-based PDF or paste the job description instead."
         )
-        
+
+    classification = classify_document(extracted_text)
+    if classification["document_type"] == "resume":
+        raise HTTPException(
+            status_code=422,
+            detail="This document appears to be a candidate resume rather than a job description. Please upload the job description or role requirements you wish to match against.",
+        )
+    elif classification["document_type"] == "unrelated":
+        raise HTTPException(
+            status_code=422,
+            detail="This doesn't look like a job description. We found text in this document, but couldn't identify enough job-related requirements. Please upload the actual job posting.",
+        )
+    elif classification["document_type"] == "ambiguous":
+        has_meaningful_title = profile.job_title and profile.job_title != "Untitled Job Description"
+        total_skills = len(profile.required_skills) + len(profile.preferred_skills)
+        if not has_meaningful_title and total_skills < 2:
+            raise HTTPException(
+                status_code=422,
+                detail="The uploaded document could not be clearly verified as a job description. Please upload a standard job description with role requirements and responsibilities.",
+            )
+
     has_meaningful_title = profile.job_title and profile.job_title != "Untitled Job Description"
     total_skills = len(profile.required_skills) + len(profile.preferred_skills)
     has_experience = bool(profile.experience_requirement)
     has_education = len(profile.education_requirements) > 0
-    
+
     if not has_meaningful_title and total_skills < 2 and not has_experience and not has_education:
         raise HTTPException(
             status_code=422,

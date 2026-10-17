@@ -41,7 +41,7 @@ export default function Hero({ onAnalyzeClick }) {
                         Analyze my resume
                         <ArrowRight className="ml-2 w-4 h-4 transition-transform group-hover:translate-x-1" />
                     </button>
-                    <a href="#how-it-works" className="w-full sm:w-auto px-8 py-3.5 rounded-full border border-slate-700 bg-slate-900/50 backdrop-blur-sm text-slate-300 font-medium flex items-center justify-center hover:bg-slate-800 hover:text-white transition-colors group">
+                    <a href="#workflow" className="w-full sm:w-auto px-8 py-3.5 rounded-full border border-slate-700 bg-slate-900/50 backdrop-blur-sm text-slate-300 font-medium flex items-center justify-center hover:bg-slate-800 hover:text-white transition-colors group">
                         <PlayCircle className="w-5 h-5 mr-2 text-blue-500 group-hover:text-blue-400 transition-colors" />
                         See how it works
                     </a>
