@@ -139,4 +139,14 @@ SKILL_VOCABULARY = {
         "mlops",
         "machine learning operations",
     ],
+    "Node.js": [
+        "node.js",
+        "nodejs",
+        "node js",
+    ],
+    "API Integration": [
+        "api integration",
+        "api integrations",
+        "rest api integration",
+    ],
 }

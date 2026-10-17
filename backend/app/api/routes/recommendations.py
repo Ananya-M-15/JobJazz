@@ -50,20 +50,31 @@ async def generate_recommendation_response(
             detail="Analysis not found.",
         )
 
+    import time
+    import logging
+
+    logger = logging.getLogger(__name__)
+    start_time = time.perf_counter()
+
     try:
         result = generate_ai_recommendations(
             request.match_result,
             request.skill_gap,
         )
-
         source = "ai"
-
-    except Exception:
+        duration = time.perf_counter() - start_time
+        logger.info("AI recommendations generated in %.2fs", duration)
+    except Exception as exc:
+        duration = time.perf_counter() - start_time
+        logger.warning(
+            "AI recommendation failed after %.2fs (%s). Using deterministic fallback.",
+            duration,
+            type(exc).__name__,
+        )
         result = generate_recommendations(
             request.match_result,
             request.skill_gap,
         )
-
         source = "fallback"
 
     for recommendation in result.recommendations:

@@ -8,17 +8,62 @@ SECTION_ALIASES = {
         "required qualifications",
         "must have",
         "must-have",
+        "must haves",
+        "must-haves",
         "mandatory skills",
         "basic qualifications",
+        "minimum qualifications",
+        "technical skills",
+        "skills",
+        "key skills",
+        "core skills",
+        "core competencies",
+        "core competency",
+        "key competencies",
+        "technical requirements",
+        "minimum requirements",
+        "basic requirements",
+        "role requirements",
+        "job requirements",
+        "candidate requirements",
+        "key requirements",
+        "what you'll need",
+        "what you will need",
+        "what you need",
+        "what you bring",
+        "what you'll bring",
+        "what you will bring",
+        "what we're looking for",
+        "what we are looking for",
+        "skills & qualifications",
+        "skills and qualifications",
+        "skills & requirements",
+        "skills and requirements",
+        "required experience & skills",
+        "required skills & experience",
+        "who you are",
+        "qualifications",
     ],
     "preferred": [
         "preferred skills",
         "preferred qualifications",
         "nice to have",
         "nice-to-have",
+        "nice to haves",
+        "nice-to-haves",
         "good to have",
+        "good-to-have",
+        "good to haves",
+        "good-to-haves",
         "desired skills",
+        "desired qualifications",
         "preferred",
+        "bonus",
+        "bonus points",
+        "bonus skills",
+        "plus",
+        "pluses",
+        "additional skills",
     ],
     "experience": [
         "experience",
@@ -30,8 +75,8 @@ SECTION_ALIASES = {
         "education",
         "educational qualifications",
         "academic qualifications",
-        "qualification",
-        "qualifications",
+        "academic background",
+        "education requirements",
     ],
     "responsibilities": [
         "responsibilities",
@@ -40,6 +85,25 @@ SECTION_ALIASES = {
         "what you will do",
         "role responsibilities",
         "duties",
+        "key responsibilities",
+    ],
+    "contextual": [
+        "about the role",
+        "about the job",
+        "about the position",
+        "about the team",
+        "team overview",
+        "about the company",
+        "about us",
+        "who we are",
+        "company overview",
+        "benefits",
+        "what we offer",
+        "perks",
+        "compensation",
+        "benefits & perks",
+        "how to apply",
+        "application process",
     ],
 }
 
@@ -62,8 +126,17 @@ def normalize_line(line: str) -> str:
 def normalize_heading(line: str) -> str:
     line = normalize_line(line)
 
+    # Strip markdown heading characters (e.g., ## or ###)
+    line = re.sub(r"^#+\s*", "", line)
+
+    # Strip markdown bold/italic decorators (e.g., **Requirements:**)
+    line = re.sub(r"^[*_]+|[*_]+$", "", line)
+
     # Remove trailing punctuation commonly found in JD headings.
     line = re.sub(r"[:\-–—]+$", "", line)
+
+    # Strip again in case markdown decorators were outside punctuation
+    line = re.sub(r"^[*_]+|[*_]+$", "", line)
 
     # Collapse whitespace.
     line = re.sub(r"\s+", " ", line)
@@ -121,6 +194,7 @@ def extract_job_sections(text: str) -> dict[str, str]:
             "preferred": "",
             "experience": "",
             "education": "",
+            "responsibilities": "",
         }
 
     lines = [
@@ -145,6 +219,10 @@ def extract_job_sections(text: str) -> dict[str, str]:
         "education": find_section(
             lines,
             SECTION_ALIASES["education"],
+        ),
+        "responsibilities": find_section(
+            lines,
+            SECTION_ALIASES["responsibilities"],
         ),
     }
 

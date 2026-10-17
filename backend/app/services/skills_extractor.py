@@ -1,58 +1,37 @@
 import re
 
+from app.utils.skill_vocabulary import SKILL_VOCABULARY
 
+# Maintained for backward-compatibility if referenced elsewhere
 SKILL_ALIASES = {
-    "python": "Python",
-    "java": "Java",
-    "c++": "C++",
-    "javascript": "JavaScript",
-    "typescript": "TypeScript",
-    "sql": "SQL",
-    "html": "HTML",
-    "css": "CSS",
-    "react": "React",
-    "reactjs": "React",
-    "node.js": "Node.js",
-    "nodejs": "Node.js",
-    "django": "Django",
-    "flask": "Flask",
-    "fastapi": "FastAPI",
-    "mongodb": "MongoDB",
-    "mysql": "MySQL",
-    "postgresql": "PostgreSQL",
-    "git": "Git",
-    "github": "GitHub",
-    "docker": "Docker",
-    "kubernetes": "Kubernetes",
-    "machine learning": "Machine Learning",
-    "deep learning": "Deep Learning",
-    "artificial intelligence": "Artificial Intelligence",
-    "generative ai": "Generative AI",
-    "nlp": "NLP",
-    "natural language processing": "Natural Language Processing",
-    "computer vision": "Computer Vision",
-    "pandas": "Pandas",
-    "numpy": "NumPy",
-    "scikit-learn": "Scikit-learn",
-    "tensorflow": "TensorFlow",
-    "pytorch": "PyTorch",
-    "tableau": "Tableau",
-    "power bi": "Power BI",
-    "excel": "Excel",
-    "rest api": "REST APIs",
-    "api integration": "API Integration",
+    alias.lower(): canonical
+    for canonical, aliases in SKILL_VOCABULARY.items()
+    for alias in aliases
 }
 
 
 def extract_skills(text: str) -> list[str]:
+    """
+    Extract skills from resume text using the unified project SKILL_VOCABULARY.
+    Ensures canonical naming, robust word-boundary matching, and parity with JD extraction.
+    """
+    if not text:
+        return []
+
     text_lower = text.lower()
     found_skills = []
 
-    for skill, display_name in SKILL_ALIASES.items():
-        pattern = r"(?<![a-z0-9])" + re.escape(skill) + r"(?![a-z0-9])"
+    for canonical_name, aliases in SKILL_VOCABULARY.items():
+        for alias in aliases:
+            pattern = (
+                r"(?<![a-z0-9+#])"
+                + re.escape(alias.lower())
+                + r"(?![a-z0-9+#])"
+            )
 
-        if re.search(pattern, text_lower):
-            if display_name not in found_skills:
-                found_skills.append(display_name)
+            if re.search(pattern, text_lower):
+                if canonical_name not in found_skills:
+                    found_skills.append(canonical_name)
+                break
 
     return found_skills

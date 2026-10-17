@@ -4,9 +4,19 @@
 @import "tailwindcss";
 
 :root {
+  --jj-navy: #0B1736;
+  --jj-deep-blue: #123A7A;
+  --jj-primary-blue: #315CF6;
+  --jj-indigo: #4F46E5;
+  --jj-mid-blue: #6687F5;
+  --jj-pale-blue: #EEF4FF;
+  --jj-soft-blue: #F6F8FF;
+  --jj-border: #DCE5F5;
+  --jj-background: #F8FAFD;
+
   font-family: "Plus Jakarta Sans", "Inter Variable", sans-serif;
-  color: #0f172a;
-  background: #f8fafc;
+  color: var(--jj-navy);
+  background: var(--jj-background);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -19,8 +29,8 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: #f8fafc;
-  color: #0f172a;
+  background: var(--jj-background);
+  color: var(--jj-navy);
 }
 
 button,
@@ -41,9 +51,19 @@ button {
 /* Base button utilities for the new light theme */
 @layer components {
   .jj-btn-primary {
-    @apply inline-flex items-center justify-center rounded-xl bg-indigo-600 px-6 py-3 font-semibold text-white transition hover:bg-indigo-700 shadow-sm;
+    background-color: var(--jj-primary-blue);
+    @apply inline-flex items-center justify-center rounded-xl px-6 py-3 font-semibold text-white transition-all duration-200 shadow-sm hover:-translate-y-[2px] hover:shadow-md active:translate-y-[0px] active:shadow-sm;
+  }
+  .jj-btn-primary:hover {
+    background-color: var(--jj-deep-blue);
   }
   .jj-btn-secondary {
-    @apply inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-900 shadow-sm;
+    border-color: var(--jj-border);
+    color: var(--jj-navy);
+    @apply inline-flex items-center justify-center rounded-xl border bg-white px-6 py-3 font-semibold transition-all duration-200 shadow-sm hover:-translate-y-[2px] hover:shadow-md active:translate-y-[0px] active:shadow-sm;
+  }
+  .jj-btn-secondary:hover {
+    background-color: var(--jj-soft-blue);
+    color: var(--jj-primary-blue);
   }
 }

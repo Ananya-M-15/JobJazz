@@ -10,6 +10,12 @@ from app.models.recommendation import RecommendationResult
 
 
 load_dotenv()
+if not os.getenv("GEMINI_API_KEY"):
+    env_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env")
+    )
+    if os.path.exists(env_path):
+        load_dotenv(env_path)
 
 
 def get_gemini_client():
@@ -20,7 +26,10 @@ def get_gemini_client():
             "GEMINI_API_KEY is not configured."
         )
 
-    return genai.Client(api_key=api_key)
+    return genai.Client(
+        api_key=api_key,
+        http_options=types.HttpOptions(timeout=10000),
+    )
 
 
 def build_recommendation_prompt(

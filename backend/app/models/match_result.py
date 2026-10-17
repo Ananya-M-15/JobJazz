@@ -31,3 +31,19 @@ class MatchResult(BaseModel):
     experience_match: bool = False
 
     education_match: bool = False
+
+    experience_status: str = "unspecified"
+
+    education_status: str = "unspecified"
+
+    experience_notes: str = ""
+
+    education_notes: str = ""
+
+    score_breakdown: str = ""
+
+    total_required_skills: int = 0
+
+    total_preferred_skills: int = 0
+
+    candidate_skills_detected: int = 0

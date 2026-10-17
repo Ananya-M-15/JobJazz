@@ -7,6 +7,7 @@ from app.api.routes.job_description import router as job_description_router
 from app.api.routes.matching import router as matching_router
 from app.api.routes.skill_gap import router as skill_gap_router
 from app.api.routes.recommendations import router as recommendations_router
+from app.api.routes.roadmap import router as roadmap_router
 
 
 app = FastAPI(
@@ -43,3 +44,4 @@ app.include_router(job_description_router)
 app.include_router(matching_router)
 app.include_router(skill_gap_router)
 app.include_router(recommendations_router)
+app.include_router(roadmap_router)

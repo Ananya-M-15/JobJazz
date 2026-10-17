@@ -172,3 +172,108 @@ export async function generateRecommendations(data) {
 
     return response.json();
 }
+
+
+/**
+ * Generate or regenerate a learning roadmap for an analysis.
+ */
+export async function generateRoadmap(data) {
+    const response = await fetch(`${API_BASE_URL}/roadmap/generate`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+        let message = "Failed to generate learning roadmap.";
+
+        try {
+            const errorData = await response.json();
+            message = errorData.detail || message;
+        } catch {
+            // Keep default message
+        }
+
+        throw new Error(message);
+    }
+
+    return response.json();
+}
+
+
+/**
+ * Retrieve an existing learning roadmap by analysis ID.
+ */
+export async function getRoadmap(analysisId) {
+    const response = await fetch(`${API_BASE_URL}/roadmap/${analysisId}`);
+
+    if (!response.ok) {
+        let message = "Failed to fetch roadmap.";
+
+        try {
+            const errorData = await response.json();
+            message = errorData.detail || message;
+        } catch {
+            // Keep default message
+        }
+
+        throw new Error(message);
+    }
+
+    return response.json();
+}
+
+
+/**
+ * Update completion status for a roadmap step.
+ */
+export async function updateRoadmapStep(analysisId, stepId, completed) {
+    const status = completed ? "completed" : "not_started";
+    const response = await fetch(`${API_BASE_URL}/roadmap/${analysisId}/step/${stepId}`, {
+        method: "PATCH",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status }),
+    });
+
+    if (!response.ok) {
+        let message = "Failed to update roadmap step.";
+
+        try {
+            const errorData = await response.json();
+            message = errorData.detail || message;
+        } catch {
+            // Keep default message
+        }
+
+        throw new Error(message);
+    }
+
+    return response.json();
+}
+
+
+/**
+ * Retrieve roadmap progress metrics by analysis ID.
+ */
+export async function getRoadmapProgress(analysisId) {
+    const response = await fetch(`${API_BASE_URL}/roadmap/${analysisId}/progress`);
+
+    if (!response.ok) {
+        let message = "Failed to fetch roadmap progress.";
+
+        try {
+            const errorData = await response.json();
+            message = errorData.detail || message;
+        } catch {
+            // Keep default message
+        }
+
+        throw new Error(message);
+    }
+
+    return response.json();
+}

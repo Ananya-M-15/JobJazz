@@ -6,7 +6,15 @@ import CareerProfile from "./components/CareerProfile"
 import JobDescriptionInput from "./components/JobDescriptionInput"
 import JobDescriptionConfirmation from "./components/JobDescriptionConfirmation"
 import DashboardLayout from "./components/dashboard/DashboardLayout"
-import HowItWorks from "./components/home/HowItWorks"
+import Hero from "./components/home/Hero"
+import WorkflowFlow from "./components/home/WorkflowFlow"
+import CapabilitiesAsymmetric from "./components/home/CapabilitiesAsymmetric"
+import MatchingMatrix from "./components/home/MatchingMatrix"
+import ArchitectureDiagram from "./components/home/ArchitectureDiagram"
+import HowItWorksTimeline from "./components/home/HowItWorksTimeline"
+import WhyJobJazz from "./components/home/WhyJobJazz"
+import FinalCTA from "./components/home/FinalCTA"
+import Footer from "./components/home/Footer"
 import { analyzeMatching, analyzeSkillGap, generateRecommendations } from "./api/jobjazzApi"
 
 function App() {
@@ -19,6 +27,7 @@ function App() {
   const [matchResult, setMatchResult] = useState(null)
   const [skillGap, setSkillGap] = useState(null)
   const [recommendations, setRecommendations] = useState(null)
+  const [analysisId, setAnalysisId] = useState(null)
 
   const [loadingStep, setLoadingStep] = useState("")
   const [error, setError] = useState("")
@@ -31,6 +40,7 @@ function App() {
     setMatchResult(null)
     setSkillGap(null)
     setRecommendations(null)
+    setAnalysisId(null)
   }
 
   const analyzeAnotherJob = () => {
@@ -39,6 +49,7 @@ function App() {
     setMatchResult(null)
     setSkillGap(null)
     setRecommendations(null)
+    setAnalysisId(null)
   }
 
   const handleResumeAnalyzed = (data) => {
@@ -59,6 +70,9 @@ function App() {
   const handleJobConfirmed = async () => {
     setWorkflowStep("analyzing")
     setError("")
+    setMatchResult(null)
+    setSkillGap(null)
+    setRecommendations(null)
 
     try {
       setLoadingStep("Comparing your profile to the job...")
@@ -70,6 +84,7 @@ function App() {
       }
       const matchRes = await analyzeMatching(matchPayload)
       setMatchResult(matchRes.match_result)
+      setAnalysisId(matchRes.analysis_id)
 
       setLoadingStep("Identifying skill gaps...")
       const gapPayload = {
@@ -97,7 +112,7 @@ function App() {
   // Resume analysis screen
   if (showAnalysis) {
     return (
-      <main className="relative min-h-screen overflow-hidden text-white">
+      <main className="relative min-h-screen overflow-hidden text-slate-900">
         <Navbar onAnalyzeClick={startAnalysis} />
         <Background />
 
@@ -123,31 +138,34 @@ function App() {
 
         {workflowStep === "analyzing" && (
           <div className="relative z-10 flex min-h-screen items-center justify-center px-6">
-            <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-white/[0.04] p-10 text-center backdrop-blur-xl">
-              <p className="text-sm font-medium uppercase tracking-[0.2em] text-purple-300">
+            <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-xl shadow-slate-200/50">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-600">
                 JobJazz Analysis
               </p>
               
               {!error ? (
                 <>
-                    <h1 className="mt-5 text-2xl font-bold text-white sm:text-3xl">
+                    <h1 className="mt-4 text-2xl font-bold text-slate-900 sm:text-3xl">
                         {loadingStep}
                     </h1>
-                    <div className="mt-10 flex justify-center">
-                        <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/10 border-t-purple-400"></div>
+                    <p className="mt-2 text-sm text-slate-500">
+                        Analyzing your experience and career alignment
+                    </p>
+                    <div className="mt-8 flex justify-center">
+                        <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-100 border-t-indigo-600"></div>
                     </div>
                 </>
               ) : (
                 <>
-                    <h1 className="mt-5 text-2xl font-bold text-red-400 sm:text-3xl">
-                        Analysis Failed
+                    <h1 className="mt-4 text-2xl font-bold text-rose-600 sm:text-3xl">
+                        Analysis Could Not Complete
                     </h1>
-                    <div className="mt-6 rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">
+                    <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-medium text-rose-700 text-left">
                         {error}
                     </div>
                     <button
-                        onClick={() => setWorkflowStep("job")}
-                        className="mt-8 w-full rounded-xl bg-white px-5 py-3 font-semibold text-black transition hover:bg-white/90"
+                        onClick={() => { setError(""); setWorkflowStep("job"); }}
+                        className="mt-6 w-full jj-btn-primary"
                     >
                         Try Again
                     </button>
@@ -159,10 +177,12 @@ function App() {
 
         {workflowStep === "results" && (
           <DashboardLayout 
+            analysisId={analysisId}
             matchResult={matchResult}
             skillGap={skillGap}
             recommendations={recommendations}
             jobProfile={jobData?.profile}
+            candidateProfile={resumeData?.profile}
             onStartOver={analyzeAnotherJob}
           />
         )}
@@ -172,97 +192,19 @@ function App() {
 
   // Landing page
   return (
-    <main className="relative min-h-screen text-slate-900 bg-slate-50 selection:bg-indigo-100 selection:text-indigo-900">
+    <main className="relative min-h-screen text-slate-900 bg-white selection:bg-[var(--jj-primary-blue)] selection:text-white flex flex-col">
       <Navbar onAnalyzeClick={startAnalysis} />
       
-      <Background />
-
-      {/* Hero Section */}
-      <section className="relative z-10 mx-auto max-w-7xl px-6 pt-32 pb-20 sm:pt-40 sm:px-12 lg:px-16">
-        <div className="max-w-2xl lg:text-left">
-          <h1 className="text-5xl font-bold tracking-tight text-slate-900 md:text-6xl max-w-xl">
-            Make every application count.
-          </h1>
-          <p className="mt-6 text-lg leading-8 text-slate-600 max-w-xl">
-            See how your resume matches the job before you apply. JobJazz highlights your strengths, identifies important gaps, and gives you clear next steps to improve your fit.
-          </p>
-          
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-start gap-4">
-            <button onClick={startAnalysis} className="jj-btn-primary">
-              Analyze my resume
-            </button>
-          </div>
-          
-          <p className="mt-6 text-sm font-medium text-slate-500">
-            Resume analysis &bull; Job matching &bull; Skill gaps &bull; Actionable insights
-          </p>
-        </div>
-      </section>
-
-      <HowItWorks />
+      <Hero onAnalyzeClick={startAnalysis} />
+      <WorkflowFlow />
+      <CapabilitiesAsymmetric />
+      <MatchingMatrix />
+      <ArchitectureDiagram />
+      <HowItWorksTimeline />
+      <WhyJobJazz />
+      <FinalCTA onAnalyzeClick={startAnalysis} />
+      <Footer />
       
-      {/* Capabilities Section */}
-      <section id="capabilities" className="relative z-10 mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8 border-t border-slate-200 bg-slate-50">
-        <div className="mx-auto max-w-2xl text-center lg:text-left lg:mx-0">
-            <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-              A clearer view of your fit
-            </h2>
-        </div>
-
-        <div className="mx-auto mt-16 max-w-5xl lg:mx-0 sm:mt-20">
-            <dl className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4 text-left">
-                
-                <div className="flex flex-col">
-                    <dt className="text-lg font-semibold leading-7 text-slate-900">
-                        Skills
-                    </dt>
-                    <dd className="mt-2 text-base leading-7 text-slate-600">
-                        See which requirements your resume already covers.
-                    </dd>
-                </div>
-                
-                <div className="flex flex-col">
-                    <dt className="text-lg font-semibold leading-7 text-slate-900">
-                        Experience
-                    </dt>
-                    <dd className="mt-2 text-base leading-7 text-slate-600">
-                        Understand how your experience aligns with the role.
-                    </dd>
-                </div>
-
-                <div className="flex flex-col">
-                    <dt className="text-lg font-semibold leading-7 text-slate-900">
-                        Education
-                    </dt>
-                    <dd className="mt-2 text-base leading-7 text-slate-600">
-                        Check how your academic background matches the stated requirements.
-                    </dd>
-                </div>
-
-                <div className="flex flex-col">
-                    <dt className="text-lg font-semibold leading-7 text-slate-900">
-                        Keywords & gaps
-                    </dt>
-                    <dd className="mt-2 text-base leading-7 text-slate-600">
-                        Identify important requirements that may need attention.
-                    </dd>
-                </div>
-
-            </dl>
-        </div>
-      </section>
-
-      {/* Final CTA */}
-      <section className="relative z-10 mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8 text-center">
-        <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-          Know where you stand before you apply.
-        </h2>
-        <div className="mt-10 flex items-center justify-center">
-          <button onClick={startAnalysis} className="jj-btn-primary">
-            Analyze my resume
-          </button>
-        </div>
-      </section>
     </main>
   )
 }

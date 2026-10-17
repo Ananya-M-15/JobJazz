@@ -201,6 +201,12 @@ class Analysis(Base):
         cascade="all, delete-orphan",
     )
 
+    roadmap: Mapped["Roadmap | None"] = relationship(
+        back_populates="analysis",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+
 
 class SkillGap(Base):
     __tablename__ = "skill_gaps"
@@ -302,4 +308,68 @@ class Recommendation(Base):
 
     analysis: Mapped["Analysis"] = relationship(
         back_populates="recommendations",
+    )
+
+
+class Roadmap(Base):
+    __tablename__ = "roadmaps"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+    )
+
+    analysis_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("analyses.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+
+    preferences: Mapped[dict] = mapped_column(
+        JSONB,
+        default=dict,
+        nullable=False,
+    )
+
+    summary: Mapped[dict] = mapped_column(
+        JSONB,
+        default=dict,
+        nullable=False,
+    )
+
+    modules: Mapped[list] = mapped_column(
+        JSONB,
+        default=list,
+        nullable=False,
+    )
+
+    schedule: Mapped[dict] = mapped_column(
+        JSONB,
+        default=dict,
+        nullable=False,
+    )
+
+    source: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        default="deterministic",
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    analysis: Mapped["Analysis"] = relationship(
+        back_populates="roadmap",
     )

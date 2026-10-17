@@ -24,6 +24,18 @@ def normalize_skill(skill: str) -> str:
     return normalized
 
 
+def deduplicate_skills(skills: list[str]) -> list[str]:
+    """Deduplicate skills by normalized form to avoid duplicate inflation."""
+    seen = set()
+    unique = []
+    for skill in skills:
+        norm = normalize_skill(skill)
+        if norm not in seen:
+            seen.add(norm)
+            unique.append(skill)
+    return unique
+
+
 def calculate_skill_matches(
     resume_skills: list[str],
     required_skills: list[str],
@@ -34,18 +46,21 @@ def calculate_skill_matches(
         for skill in resume_skills
     }
 
+    unique_required = deduplicate_skills(required_skills)
+    unique_preferred = deduplicate_skills(preferred_skills)
+
     matched_required = []
     missing_required = []
     matched_preferred = []
     missing_preferred = []
 
-    for skill in required_skills:
+    for skill in unique_required:
         if normalize_skill(skill) in resume_skill_set:
             matched_required.append(skill)
         else:
             missing_required.append(skill)
 
-    for skill in preferred_skills:
+    for skill in unique_preferred:
         if normalize_skill(skill) in resume_skill_set:
             matched_preferred.append(skill)
         else:
@@ -86,22 +101,33 @@ def calculate_score(
     matched_preferred: list[str],
     preferred_skills: list[str],
 ) -> float:
-    required_score = (
+    has_required = bool(required_skills)
+    has_preferred = bool(preferred_skills)
+
+    if not has_required and not has_preferred:
+        return 0.0
+
+    required_ratio = (
         len(matched_required) / len(required_skills)
-        if required_skills
-        else 1.0
+        if has_required
+        else 0.0
     )
 
-    preferred_score = (
+    preferred_ratio = (
         len(matched_preferred) / len(preferred_skills)
-        if preferred_skills
-        else 1.0
+        if has_preferred
+        else 0.0
     )
 
-    overall_score = (
-        required_score * 0.75
-        + preferred_score * 0.25
-    ) * 100
+    if has_required and has_preferred:
+        overall_score = (
+            required_ratio * 0.75
+            + preferred_ratio * 0.25
+        ) * 100
+    elif has_required:
+        overall_score = required_ratio * 100
+    else:
+        overall_score = preferred_ratio * 100
 
     return round(overall_score, 2)
 
@@ -236,33 +262,83 @@ def calculate_experience_years(
     return round(total_months / 12, 2)
 
 
-def calculate_experience_match(
+def evaluate_experience(
     resume: ResumeProfile,
     job: JobProfile,
-) -> bool:
+) -> tuple[bool, str, str]:
+    """
+    Evaluate experience requirement.
+    Returns: (is_match, status, notes)
+    status is one of: 'met', 'gap', 'unspecified'
+    """
     required_years = extract_years_required(
         job.experience_requirement
     )
 
     if required_years is None:
-        return True
+        notes = (
+            f"Stated requirement: '{job.experience_requirement}'."
+            if job.experience_requirement
+            else "No minimum years of experience specified in the job description."
+        )
+        return True, "unspecified", notes
 
-    total_years = calculate_experience_years(
-        resume
-    )
+    total_years = calculate_experience_years(resume)
 
-    return total_years >= required_years
+    if total_years >= required_years:
+        notes = (
+            f"Requires {required_years:g}+ years; "
+            f"candidate documents approximately {total_years:g} years of experience."
+        )
+        return True, "met", notes
+    else:
+        gap = round(required_years - total_years, 1)
+        if total_years == 0:
+            notes = (
+                f"Requires {required_years:g}+ years of experience; "
+                f"no dated work experience found in candidate profile."
+            )
+        else:
+            notes = (
+                f"Requires {required_years:g}+ years of experience; "
+                f"candidate documents approximately {total_years:g} years "
+                f"(gap of ~{gap:g} years)."
+            )
+        return False, "gap", notes
 
 
-def calculate_education_match(
+def calculate_experience_match(
     resume: ResumeProfile,
     job: JobProfile,
 ) -> bool:
+    is_match, _, _ = evaluate_experience(resume, job)
+    return is_match
+
+
+def evaluate_education(
+    resume: ResumeProfile,
+    job: JobProfile,
+) -> tuple[bool, str, str]:
+    """
+    Evaluate education requirement.
+    Returns: (is_match, status, notes)
+    status is one of: 'met', 'gap', 'unspecified'
+    """
     if not job.education_requirements:
-        return True
+        return (
+            True,
+            "unspecified",
+            "No specific degree or education requirements stated in the job description.",
+        )
+
+    req_summary = "; ".join(job.education_requirements)
 
     if not resume.education:
-        return False
+        return (
+            False,
+            "gap",
+            f"Job specifies: {req_summary}; no formal education credentials found in candidate profile.",
+        )
 
     resume_text = " ".join(
         [
@@ -283,11 +359,14 @@ def calculate_education_match(
                 or "btech" in resume_text
             )
         ) or (
-            "b.tech" in requirement_lower
-            or "btech" in requirement_lower
-        ) and (
-            "b.tech" in resume_text
-            or "btech" in resume_text
+            (
+                "b.tech" in requirement_lower
+                or "btech" in requirement_lower
+            )
+            and (
+                "b.tech" in resume_text
+                or "btech" in resume_text
+            )
         )
 
         master_match = (
@@ -302,8 +381,6 @@ def calculate_education_match(
         if not (degree_match or master_match):
             continue
 
-        # If a specific field is requested, verify it
-        # against the candidate's education.
         field_keywords = [
             "computer science",
             "computer engineering",
@@ -320,21 +397,43 @@ def calculate_education_match(
         ]
 
         if not requested_fields:
-            return True
+            return (
+                True,
+                "met",
+                f"Candidate's degree satisfies the requirement ({requirement}).",
+            )
 
         if any(
             field in resume_text
             for field in requested_fields
         ):
-            return True
+            return (
+                True,
+                "met",
+                f"Candidate's degree and field satisfy the requirement ({requirement}).",
+            )
 
-    return False
+    return (
+        False,
+        "gap",
+        f"Candidate credentials do not clearly match the stated requirement: {req_summary}.",
+    )
+
+
+def calculate_education_match(
+    resume: ResumeProfile,
+    job: JobProfile,
+) -> bool:
+    is_match, _, _ = evaluate_education(resume, job)
+    return is_match
 
 
 def calculate_match(
     resume: ResumeProfile,
     job: JobProfile,
 ) -> MatchResult:
+    unique_required = deduplicate_skills(job.required_skills)
+    unique_preferred = deduplicate_skills(job.preferred_skills)
 
     (
         matched_required,
@@ -343,33 +442,48 @@ def calculate_match(
         missing_preferred,
     ) = calculate_skill_matches(
         resume.skills,
-        job.required_skills,
-        job.preferred_skills,
+        unique_required,
+        unique_preferred,
     )
 
     keyword_matches, keyword_gaps = (
         calculate_keyword_matches(
             resume.skills,
-            job.keywords,
+            deduplicate_skills(job.keywords),
         )
     )
 
     overall_score = calculate_score(
         matched_required,
-        job.required_skills,
+        unique_required,
         matched_preferred,
-        job.preferred_skills,
+        unique_preferred,
     )
 
-    experience_match = calculate_experience_match(
+    experience_match, experience_status, experience_notes = evaluate_experience(
         resume,
         job,
     )
 
-    education_match = calculate_education_match(
+    education_match, education_status, education_notes = evaluate_education(
         resume,
         job,
     )
+
+    # Human-readable factual score breakdown
+    parts = []
+    if unique_required:
+        parts.append(
+            f"{len(matched_required)} of {len(unique_required)} required skills matched"
+        )
+    if unique_preferred:
+        parts.append(
+            f"{len(matched_preferred)} of {len(unique_preferred)} preferred skills matched"
+        )
+    if not parts:
+        score_breakdown = "No specific skills were extracted from this job description."
+    else:
+        score_breakdown = ", ".join(parts) + f". Overall score: {overall_score}%."
 
     return MatchResult(
         overall_score=overall_score,
@@ -381,4 +495,12 @@ def calculate_match(
         keyword_gaps=keyword_gaps,
         experience_match=experience_match,
         education_match=education_match,
+        experience_status=experience_status,
+        education_status=education_status,
+        experience_notes=experience_notes,
+        education_notes=education_notes,
+        score_breakdown=score_breakdown,
+        total_required_skills=len(unique_required),
+        total_preferred_skills=len(unique_preferred),
+        candidate_skills_detected=len(resume.skills),
     )

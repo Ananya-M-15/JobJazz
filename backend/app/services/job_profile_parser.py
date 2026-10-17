@@ -106,10 +106,46 @@ def parse_job_description(text: str) -> JobProfile:
     )
 
     # Recognized skills across the complete JD.
-    all_skills = extract_job_skills(
-        text,
-        "",
-    )[0]
+    all_skills = list(
+        dict.fromkeys(
+            extract_job_skills(
+                text,
+                "",
+            )[0]
+        )
+    )
+
+    required_skills = list(dict.fromkeys(required_skills))
+    preferred_skills = list(dict.fromkeys(preferred_skills))
+
+    # If no explicit required section was detected, check responsibilities
+    if not required_skills and sections.get("responsibilities"):
+        resp_skills = extract_job_skills(
+            sections["responsibilities"],
+            "",
+        )[0]
+        pref_set = set(preferred_skills)
+        required_skills = [
+            skill for skill in dict.fromkeys(resp_skills)
+            if skill not in pref_set
+        ]
+
+    # If still no required skills, check remaining skills in general text
+    if not required_skills and all_skills:
+        pref_set = set(preferred_skills)
+        remaining = [
+            skill for skill in all_skills
+            if skill not in pref_set
+        ]
+        if remaining:
+            required_skills = remaining
+
+    # Ensure a skill in required is not duplicated in preferred.
+    req_set = set(required_skills)
+    preferred_skills = [
+        skill for skill in preferred_skills
+        if skill not in req_set
+    ]
 
     return JobProfile(
         job_title=extract_job_title(text),
